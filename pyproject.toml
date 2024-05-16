@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aws-tag-tools"
-version = "0.1.0"
+version = "0.1.1"
 description = "A bulk management tool for the tags of AWS resources"
 authors = ["AnyIons <anyions@hotmail.com>"]
 maintainers = ["AnyIons <anyions@hotmail.com>"]
