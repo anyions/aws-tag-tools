@@ -82,7 +82,7 @@ class Scanner(Registrable, ABC):
         """
 
         # avoid s3 get_bucket_tagging takes too long time if no tags set
-        config = boto3.session.Config(connect_timeout=3, retries={"max_attempts": 0})
+        config = boto3.session.Config(connect_timeout=30, retries={"max_attempts": 0})
 
         return session.client(self._client_name, config=config, region_name=detect_region(region, self._partition))
 
