@@ -1,8 +1,8 @@
 # AWS-Tag-Tools
 
 ![PyPI - Version](https://img.shields.io/pypi/v/aws-tag-tools?color=a1b858&label=)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aws-tag-tools)
-![PYPI License](https://img.shields.io/pypi/l/aws-tag-tools)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aws-tag-Tools)
+![PyPI - License](https://img.shields.io/pypi/l/aws-tag-tools?color=)
 ![Static Badge](https://img.shields.io/badge/author-AnyIons-violet)
 
 **A bulk management tool for the tags of AWS resources**
