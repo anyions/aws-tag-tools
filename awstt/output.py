@@ -66,7 +66,9 @@ class FakeConsole:
 
 if os.getenv("LAMBDA_TASK_ROOT") is None:
     from rich.console import Console as RichConsole
+    from rich.progress import BarColumn
     from rich.progress import Progress as RichProgress
+    from rich.progress import SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table as RichTable
 
     class Console(RichConsole):
@@ -76,7 +78,14 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
 
         # noinspection PyMethodMayBeStatic
         def new_progress(self):
-            return RichProgress(console=self)
+            return RichProgress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                console=self,
+            )
 
 else:
     Console = FakeConsole
