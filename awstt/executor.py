@@ -113,16 +113,16 @@ def _group_resources(resources: List[AWSResource], tags: List[Tag], force: bool)
 
 
 def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.Console) -> List[TaggingResponse]:
+    tagger = Tagger(config.partition, config.credential)
+
     if len(config.resources) == 0:
-        tagger = Tagger(config.partition, config.credential)
         g_resources = _group_resources(resources, config.tags, config.force)
 
-        TaggingThread.add(tagger, g_resources)
+        TaggingThread.add(g_resources)
     else:
         g_tags = config.tags
         for c_resource in config.resources:
             if isinstance(c_resource, str):
-                tagger = Tagger(config.partition, config.credential)
                 targets: List[AWSResource] = []
 
                 for resource in resources:
@@ -133,7 +133,7 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
 
                 if len(targets) > 0:
                     g_resources = _group_resources(targets, g_tags, config.force)
-                    TaggingThread.add(tagger, g_resources)
+                    TaggingThread.add(g_resources)
             else:
                 tagger = Tagger(config.partition, config.credential)
                 force = c_resource.force or config.force
@@ -156,9 +156,9 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
 
                 if len(targets) > 0:
                     g_resources = _group_resources(targets, tags, force)
-                    TaggingThread.add(tagger, g_resources)
+                    TaggingThread.add(g_resources)
 
-    return TaggingThread.execute(console)
+    return TaggingThread.execute(tagger, console)
 
 
 def run(config: Config):

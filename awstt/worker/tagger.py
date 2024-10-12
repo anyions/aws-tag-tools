@@ -6,7 +6,7 @@ import boto3
 import botocore.config
 
 from awstt.config import Credential
-from awstt.worker.types import RegionalTaggingTarget, TaggingResponse
+from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, TaggingResponse
 from awstt.worker.utils import detect_region
 
 
@@ -34,6 +34,43 @@ class Tagger(object):
         self._session = session
         self._partition = partition
         self._account_id = session.client("sts").get_caller_identity().get("Account")
+
+    def execute_one(self, region: str, target: AWSResource, tags: List[AWSResourceTag]) -> TaggingResponse:
+        """
+        Tag one resource use ResourceGroupsTaggingApi
+
+        :param region: The region of resource
+        :type region: str
+        :param target: The resource to apply tags
+        :type target: AWSResource
+        :param tags: The tags to apply
+        :type tags: List[AWSResourceTag]
+        """
+        logger.info(
+            f"Executing resource tagging: "
+            f"region - {detect_region(region, self._partition)}, "
+            f"resource - {target}, "
+            f"tags - {[t.dict() for t in tags]}"
+        )
+
+        # noinspection SpellCheckingInspection
+        client = self._session.client(
+            "resourcegroupstaggingapi",
+            region_name=detect_region(region, self._partition),
+            config=botocore.config.Config(
+                retries={"max_attempts": 3, "mode": "standard"},
+            ),
+        )
+
+        client_resp = client.tag_resources(ResourceARNList=[target.arn], Tags={t.key: t.value for t in tags})
+        hint = client_resp.get("FailedResourcesMap", {}).get(target.arn, {}).get("ErrorMessage", None)
+
+        return TaggingResponse(
+            category=target.category,
+            arn=target.arn,
+            status="Success" if hint is None else "Failed",
+            hint=hint,
+        )
 
     def execute(self, targets: List[RegionalTaggingTarget]) -> List[TaggingResponse]:
         """

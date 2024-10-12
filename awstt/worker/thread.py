@@ -1,4 +1,5 @@
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
@@ -11,11 +12,11 @@ from awstt.worker.types import AWSResource, RegionalTaggingTarget, ResourceSelec
 logger = logging.getLogger(__name__)
 
 SCANNING_THREAD_LIMIT = 5
-TAGGING_THREAD_LIMIT = 1
+RATE_LIMIT_EXCEEDED = "Rate exceeded"
 
 
 class ScanningThread:
-    _workers = []
+    _workers: List["ScanningThread.Worker"] = []
 
     class Worker:
         def __init__(self, scanner: Scanner, selectors: List[ResourceSelector]):
@@ -59,19 +60,18 @@ class ScanningThread:
 
 
 class TaggingThread:
-    _workers = []
+    _workers: List["TaggingThread.Worker"] = []
 
     class Worker:
-        def __init__(self, tagger: Tagger, targets: List[RegionalTaggingTarget]):
-            self.tagger = tagger
+        def __init__(self, targets: List[RegionalTaggingTarget]):
             self.targets = targets
 
-        def execute(self) -> List[TaggingResponse]:
+        def execute(self, tagger: Tagger) -> List[TaggingResponse]:
             t_dict = [target.dict() for target in self.targets]
 
             responses = []
             try:
-                responses = self.tagger.execute(self.targets)
+                responses = tagger.execute(self.targets)
             except KeyboardInterrupt:
                 logger.warning(f"Resources tagging process terminated, targets - {t_dict}")
             except Exception as e:
@@ -88,24 +88,44 @@ class TaggingThread:
             return total
 
     @classmethod
-    def add(cls, tagger: Tagger, targets: List[RegionalTaggingTarget]):
-        cls._workers.append(TaggingThread.Worker(tagger, targets))
+    def add(cls, targets: List[RegionalTaggingTarget]):
+        cls._workers.append(TaggingThread.Worker(targets))
 
     @classmethod
-    def execute(cls, console: output.Console) -> List[TaggingResponse]:
+    def execute(cls, tagger: Tagger, console: output.Console) -> List[TaggingResponse]:
         logger.info(f"Executing resources tagging...")
 
         progress = console.new_progress()
-        task_id = progress.add_task("Tagging...".ljust(15), total=sum(worker.total_targets for worker in cls._workers))
+        progress.add_task("Tagging...".ljust(15), total=None)
         progress.start()
 
+        rate_exceeded_targets = []
+
         responses = []
-        with ThreadPoolExecutor(max_workers=TAGGING_THREAD_LIMIT) as executor:
-            futures = [executor.submit(worker.execute) for worker in cls._workers]
-            for future in as_completed(futures):
-                resp = future.result()
-                progress.update(task_id, advance=len(resp))
-                responses.extend(resp)
+        for worker in cls._workers:
+            resp = worker.execute(tagger=tagger)
+            for r in resp:
+                if r.hint != RATE_LIMIT_EXCEEDED:
+                    responses.append(r)
+                else:
+                    for target in worker.targets:
+                        for res in target.resources:
+                            if res.arn == r.arn:
+                                rate_exceeded_targets.append((target.region, res, target.tags))
+
+        # TODO use batch
+        while True:
+            if len(rate_exceeded_targets) == 0:
+                break
+
+            targets = rate_exceeded_targets[:]
+            for item in targets:
+                resp = tagger.execute_one(item[0], item[1], item[2])
+                if resp.hint != RATE_LIMIT_EXCEEDED:
+                    responses.append(resp)
+                    rate_exceeded_targets.remove(item)
+
+                time.sleep(0.3)  # avoid throttling
 
         progress.stop()
         logger.info(f"Finished batch resources tagging")

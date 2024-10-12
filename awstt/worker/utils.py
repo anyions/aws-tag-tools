@@ -42,12 +42,12 @@ def is_arn_wild_match(pattern: str, inputs: str) -> (bool, bool):
     other = parse_arn(inputs)
 
     matched = (
-            self.partition == other.partition
-            and self.service == other.service
-            and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
-            and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
-            and self.resource_type == other.resource_type
-            and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
+        self.partition == other.partition
+        and self.service == other.service
+        and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
+        and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
+        and self.resource_type == other.resource_type
+        and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
     )
 
     wild = self.region in ["*", ""] or self.account_id in ["*", ""] or self.resource in ["*", ""]
