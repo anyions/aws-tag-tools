@@ -172,7 +172,14 @@ def run(config: Config):
 
     logger.info(f"Running with config: \n{echo_config}")
     if logger.getEffectiveLevel() >= logging.INFO:
-        console.print(f"Running with config:\n{echo_config}")
+        console.print(
+            console.new_panel(
+                console.new_pretty(echo_config),
+                padding=(1, 1),
+                title="[b red]Running with config",
+                border_style="bright_blue",
+            ),
+        )
 
     try:
         check_config(config)

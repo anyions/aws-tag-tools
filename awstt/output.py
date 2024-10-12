@@ -50,9 +50,35 @@ class FakeProgress:
         pass
 
 
+class FakePanel:
+    pass
+
+
 class FakeConsole:
     # noinspection PyMethodMayBeStatic
     def print(self, *objects, **kwargs):
+        pass
+
+    def print_json(
+        self,
+        json: Optional[str] = None,
+        *,
+        data: Any = None,
+        indent: Union[None, int, str] = 2,
+        highlight: bool = True,
+        skip_keys: bool = False,
+        ensure_ascii: bool = False,
+        check_circular: bool = True,
+        allow_nan: bool = True,
+        default: Optional[Callable[[Any], Any]] = None,
+        sort_keys: bool = False,
+    ) -> None:
+        pass
+
+    def pprint(
+        self,
+        objects: Any,
+    ) -> None:
         pass
 
     # noinspection PyMethodMayBeStatic
@@ -63,20 +89,12 @@ class FakeConsole:
     def new_progress(self):
         return FakeProgress()
 
-    def print_json(
-            self,
-            json: Optional[str] = None,
-            *,
-            data: Any = None,
-            indent: Union[None, int, str] = 2,
-            highlight: bool = True,
-            skip_keys: bool = False,
-            ensure_ascii: bool = False,
-            check_circular: bool = True,
-            allow_nan: bool = True,
-            default: Optional[Callable[[Any], Any]] = None,
-            sort_keys: bool = False,
-    ) -> None:
+    # noinspection PyMethodMayBeStatic
+    def new_panel(self, *_kwarg, **_kwargs):
+        return FakePanel()
+
+    # noinspection PyMethodMayBeStatic
+    def new_pretty(self, *args, **kwargs):
         pass
 
     @staticmethod
@@ -86,11 +104,12 @@ class FakeConsole:
 
 if os.getenv("LAMBDA_TASK_ROOT") is None:
     from rich.console import Console as RichConsole
+    from rich.panel import Panel as RichPanel
+    from rich.pretty import Pretty, pprint
     from rich.progress import BarColumn
     from rich.progress import Progress as RichProgress
     from rich.progress import SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table as RichTable
-
 
     class Console(RichConsole):
         # noinspection PyMethodMayBeStatic
@@ -107,6 +126,20 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
                 TimeElapsedColumn(),
                 console=self,
             )
+
+        # noinspection PyMethodMayBeStatic
+        def new_panel(self, *args, **kwargs):
+            return RichPanel.fit(*args, **kwargs)
+
+        # noinspection PyMethodMayBeStatic
+        def new_pretty(self, *args, **kwargs):
+            return Pretty(*args, **kwargs)
+
+        def pprint(
+            self,
+            objects: Any,
+        ) -> None:
+            pprint(objects, console=self)
 
         @staticmethod
         def is_fake():
