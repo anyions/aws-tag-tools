@@ -39,7 +39,7 @@ class Scanner(Registrable, ABC):
         self._session = session
         self._partition = partition
         self._available_regions = regions
-        self._account_id = session.client("sts").get_caller_identity().get("Account")
+        self._account_id = None
 
     def is_supported_arn(self, arn: str) -> bool:
         info = parse_arn(arn)
@@ -54,6 +54,9 @@ class Scanner(Registrable, ABC):
         :rtype: List[AWSResource]
         """
         logger.info(f"Starting resources scan - {self.category}")
+
+        # init account_id only when executing, make faster
+        self._account_id = self._session.client("sts").get_caller_identity()["Account"]
 
         resources: List[AWSResource] = []
         for region in self._available_regions:
