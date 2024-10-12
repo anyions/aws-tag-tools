@@ -76,7 +76,7 @@ _cli_common_options = [
         "log_level",
         help="Set log level",
         type=click.Choice(["debug", "info", "warning", "error", "critical"], case_sensitive=False),
-        default="info",
+        default="error",
         show_default=True,
     ),
 ]

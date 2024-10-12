@@ -171,6 +171,8 @@ def run(config: Config):
         echo_config["credential"]["secret_key"] = "******"
 
     logger.info(f"Running with config: \n{echo_config}")
+    if logger.getEffectiveLevel() >= logging.INFO:
+        console.print(f"Running with config:\n{echo_config}")
 
     try:
         check_config(config)

@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Optional
+from typing import Any, Callable, Optional, Union
 
 
 class FakeColumn:
@@ -52,7 +52,7 @@ class FakeProgress:
 
 class FakeConsole:
     # noinspection PyMethodMayBeStatic
-    def print(self, table: FakeTable):
+    def print(self, *objects, **kwargs):
         pass
 
     # noinspection PyMethodMayBeStatic
@@ -63,6 +63,26 @@ class FakeConsole:
     def new_progress(self):
         return FakeProgress()
 
+    def print_json(
+            self,
+            json: Optional[str] = None,
+            *,
+            data: Any = None,
+            indent: Union[None, int, str] = 2,
+            highlight: bool = True,
+            skip_keys: bool = False,
+            ensure_ascii: bool = False,
+            check_circular: bool = True,
+            allow_nan: bool = True,
+            default: Optional[Callable[[Any], Any]] = None,
+            sort_keys: bool = False,
+    ) -> None:
+        pass
+
+    @staticmethod
+    def is_fake():
+        return True
+
 
 if os.getenv("LAMBDA_TASK_ROOT") is None:
     from rich.console import Console as RichConsole
@@ -70,6 +90,7 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
     from rich.progress import Progress as RichProgress
     from rich.progress import SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table as RichTable
+
 
     class Console(RichConsole):
         # noinspection PyMethodMayBeStatic
@@ -86,6 +107,10 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
                 TimeElapsedColumn(),
                 console=self,
             )
+
+        @staticmethod
+        def is_fake():
+            return False
 
 else:
     Console = FakeConsole
@@ -115,7 +140,7 @@ log_level = {
 }
 
 
-def init_logger(level: str = "info", save: bool = False):
+def init_logger(level: str = "error", save: bool = False):
     if os.getenv("LAMBDA_TASK_ROOT") is None:
         from rich.highlighter import NullHighlighter
         from rich.logging import RichHandler

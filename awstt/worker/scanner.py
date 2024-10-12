@@ -71,7 +71,8 @@ class Scanner(Registrable, ABC):
                     f"Finished - {self.category} @ {region}, " f"total - {len(founded)}, matched - {len(filtered)}"
                 )
             except Exception as e:
-                logger.error(f"Failed - {self.category} @ {region}, error: {e}, stacks:\n{traceback.format_exc()}")
+                stack = f"stack:\n{traceback.format_exc()}" if logger.isEnabledFor(logging.DEBUG) else ""
+                logger.error(f"Failed - {self.category} @ {region}, error: {e} {stack}")
 
         logger.debug(f"Finished resources scan - {self.category}, found - {len(resources)}")
 
