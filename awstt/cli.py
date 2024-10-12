@@ -41,7 +41,7 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Log Options",
-            "options": ["--save"],
+            "options": ["--save-log", "--log-level"],
         },
         {
             "name": "Help",
@@ -70,8 +70,15 @@ _cli_common_options = [
     click.option("--access_key", help="Access key of AWS AK/SK"),
     click.option("--secret_key", help="Secret key of AWS AK/SK"),
     click.option("--profile", help="Profile name of AWS CLI Credential"),
-    click.option("--debug", is_flag=True, default=False, help="Show debug information"),
-    click.option("--save", is_flag=True, default=False, help="Save log to file"),
+    click.option("--save-log", "save_log", is_flag=True, default=False, help="Save log to file"),
+    click.option(
+        "--log-level",
+        "log_level",
+        help="Set log level",
+        type=click.Choice(["debug", "info", "warning", "error", "critical"], case_sensitive=False),
+        default="info",
+        show_default=True,
+    ),
 ]
 
 
@@ -103,15 +110,15 @@ def cmd_set(
     access_key: Optional[str],
     secret_key: Optional[str],
     profile: Optional[str],
-    debug: Optional[bool],
-    save: Optional[bool],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
     if len(tag) < 1:
         click.echo("Error: must set at least one tag, see the usage of SET command.")
         click.echo(click.get_current_context().get_help())
         return
 
-    init_logger(debug, save)
+    init_logger(log_level, save_log)
 
     opt_tags = tag.split(",")
     tags = []
@@ -179,10 +186,10 @@ def cmd_list(
     access_key: Optional[str],
     secret_key: Optional[str],
     profile: Optional[str],
-    debug: Optional[bool],
-    save: Optional[bool],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
-    init_logger(debug, save)
+    init_logger(log_level, save_log)
 
     inputs = {
         "action": "list",
@@ -214,10 +221,10 @@ def execute(
     access_key: Optional[str],
     secret_key: Optional[str],
     profile: Optional[str],
-    debug: Optional[bool],
-    save: Optional[bool],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
-    init_logger(debug, save)
+    init_logger(log_level, save_log)
 
     with open(cfg, "r") as f:
         inputs = json.loads(f.read())

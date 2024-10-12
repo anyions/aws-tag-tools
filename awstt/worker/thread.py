@@ -40,7 +40,7 @@ class ScanningThread:
 
     @classmethod
     def execute(cls, console: output.Console) -> List[AWSResource]:
-        logger.info(f"Executing resources scan, total - {len(cls._workers)}")
+        logger.debug(f"Executing resources scan, total - {len(cls._workers)}")
 
         resources = []
         with ThreadPoolExecutor(max_workers=SCANNING_THREAD_LIMIT) as executor:
@@ -54,7 +54,7 @@ class ScanningThread:
                 resources.extend(future.result())
 
         progress.stop()
-        logger.info(f"Finished resources scan, found - {len(resources)}")
+        logger.debug(f"Finished resources scan, found - {len(resources)}")
 
         return resources
 
@@ -93,7 +93,7 @@ class TaggingThread:
 
     @classmethod
     def execute(cls, tagger: Tagger, console: output.Console) -> List[TaggingResponse]:
-        logger.info(f"Executing resources tagging...")
+        logger.debug(f"Executing resources tagging...")
 
         progress = console.new_progress()
         progress.add_task("Tagging...".ljust(15), total=None)
@@ -128,7 +128,7 @@ class TaggingThread:
                 time.sleep(0.3)  # avoid throttling
 
         progress.stop()
-        logger.info(f"Finished batch resources tagging")
+        logger.debug(f"Finished batch resources tagging")
 
         responses.sort(key=lambda x: f"{x.category}--{x.arn}")
         return responses

@@ -53,7 +53,7 @@ class Scanner(Registrable, ABC):
         :return: A list ARNs of resources matched selectors
         :rtype: List[AWSResource]
         """
-        logger.info(f"Starting resources scan - {self.category}")
+        logger.debug(f"Starting resources scan - {self.category}")
 
         # init account_id only when executing, make faster
         self._account_id = self._session.client("sts").get_caller_identity()["Account"]
@@ -61,19 +61,19 @@ class Scanner(Registrable, ABC):
         resources: List[AWSResource] = []
         for region in self._available_regions:
             try:
-                logger.info(f"Scanning - {self.category} @ {region}")
+                logger.debug(f"Scanning - {self.category} @ {region}")
                 client = self._create_client(self._session, region=detect_region(region, self._partition))
                 founded = self._list_resources(client)
                 filtered = filter_resources(founded, selectors)
 
                 resources.extend(filtered)
-                logger.info(
+                logger.debug(
                     f"Finished - {self.category} @ {region}, " f"total - {len(founded)}, matched - {len(filtered)}"
                 )
             except Exception as e:
                 logger.error(f"Failed - {self.category} @ {region}, error: {e}, stacks:\n{traceback.format_exc()}")
 
-        logger.info(f"Finished resources scan - {self.category}, found - {len(resources)}")
+        logger.debug(f"Finished resources scan - {self.category}, found - {len(resources)}")
 
         return resources
 

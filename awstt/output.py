@@ -106,7 +106,16 @@ class ShutdownHandler(logging.Handler):
         sys.exit(1)
 
 
-def init_logger(debug: bool = False, save: bool = False):
+log_level = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+}
+
+
+def init_logger(level: str = "info", save: bool = False):
     if os.getenv("LAMBDA_TASK_ROOT") is None:
         from rich.highlighter import NullHighlighter
         from rich.logging import RichHandler
@@ -134,8 +143,8 @@ def init_logger(debug: bool = False, save: bool = False):
 
         boto3.set_stream_logger("", logging.INFO)
 
-    logging.getLogger().setLevel(logging.DEBUG if debug else logging.ERROR)
+    logging.getLogger().setLevel(log_level.get(level, logging.INFO))
     logging.getLogger("botocore").setLevel(logging.ERROR)
     logging.getLogger("boto").setLevel(logging.ERROR)
     logging.getLogger("urllib3").setLevel(logging.ERROR)
-    logging.getLogger().addHandler(ShutdownHandler(level=50))
+    logging.getLogger().addHandler(ShutdownHandler(level=logging.CRITICAL))

@@ -46,7 +46,7 @@ class Tagger(object):
         :param tags: The tags to apply
         :type tags: List[AWSResourceTag]
         """
-        logger.info(
+        logger.debug(
             f"Executing resource tagging: "
             f"region - {detect_region(region, self._partition)}, "
             f"resource - {target}, "
@@ -83,7 +83,7 @@ class Tagger(object):
         responses = []
 
         for target in targets:
-            logger.info(
+            logger.debug(
                 f"Executing resources tagging: "
                 f"region - {detect_region(target.region, self._partition)}, "
                 f"resources - {[res.arn for res in target.resources]}, "
@@ -139,7 +139,7 @@ class Tagger(object):
                 time.sleep(1)  # avoid throttling
 
             failures = len([res for res in responses if res.status == "Failed"])
-            logger.info(
+            logger.debug(
                 f"Finished resources tagging: "
                 f"region - {target.region}, "
                 f"resources - {[res.arn for res in target.resources]}, "
