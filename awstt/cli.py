@@ -1,103 +1,241 @@
-# -*- coding: utf-8 -*-
+import json
+import logging
+from typing import Optional
 
-import sys
-import textwrap
-from argparse import SUPPRESS, ArgumentParser, RawDescriptionHelpFormatter, RawTextHelpFormatter
+import rich_click as click
 
-from awstt.executor import execute
-from awstt.worker import *
+from awstt import executor
+from awstt.config import init_config
+from awstt.output import init_logger
 
 
-class RawFormatter(RawTextHelpFormatter, RawDescriptionHelpFormatter):
-    """Formats argument help which maintains line length restrictions as well as appends default value if present."""
+logger = logging.getLogger()
 
-    def _split_lines(self, text, width):
-        wrapper = textwrap.TextWrapper(width=width)
-        lines = []
-        for line in text.splitlines():
-            if len(line) > width:
-                lines.extend(wrapper.wrap(line))
-            else:
-                lines.append(line)
-        return lines
+click.rich_click.USE_RICH_MARKUP = False
+
+click.rich_click.COMMAND_GROUPS = {
+    "awstt": [{"name": "Commands", "commands": ["set", "unset", "list", "exec", "info"]}]
+}
+
+click.rich_click.OPTION_GROUPS = {
+    "awstt": [
+        {
+            "name": "Help",
+            "options": ["--help"],
+        },
+    ],
+    "awstt info": [
+        {
+            "name": "Help",
+            "options": ["--help"],
+        },
+    ],
+    "awstt set": [
+        {
+            "name": "Tagging Options",
+            "options": ["--tag", "--resource", "--region", "--partition", "--force", "--selector"],
+        },
+        {
+            "name": "Credential Options",
+            "options": ["--access_key", "--secret_key", "--profile"],
+        },
+        {
+            "name": "Log Options",
+            "options": ["--save"],
+        },
+        {
+            "name": "Help",
+            "options": ["--help"],
+        },
+    ],
+}
+
+
+@click.group()
+def info():
+    """Show helpful information about AWS-Tag-Tools"""
+    pass
+
+
+@info.command("resources", short_help="List all supported resources", add_help_option=False)
+def info_resources():
+    click.echo("Supported resources")
+
+
+_cli_option_partition_choices = click.Choice(["aws", "aws-cn", "aws-us-gov"])
+
+_cli_common_options = [
+    click.option("--region", help="Region of AWS", metavar="REGION1[,REGION2,...]"),
+    click.option("--partition", help="Partition of AWS", type=_cli_option_partition_choices, default="aws"),
+    click.option("--access_key", help="Access key of AWS AK/SK"),
+    click.option("--secret_key", help="Secret key of AWS AK/SK"),
+    click.option("--profile", help="Profile name of AWS CLI Credential"),
+    click.option("--debug", is_flag=True, default=False, help="Show debug information"),
+    click.option("--save", is_flag=True, default=False, help="Save log to file"),
+]
+
+
+def cli_common_options(func):
+    for option in reversed(_cli_common_options):
+        func = option(func)
+    return func
+
+
+@click.group()
+def cli():
+    """AWS-Tag-Tools: The missing tag manager for AWS resources"""
+    pass
+
+
+@cli.command("set", help="Set tag(s) to resources")
+@cli_common_options
+@click.option("--tag", required=True, help="Tag to set", metavar="KEY=VALUE[,KEY=VALUE,...]")
+@click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
+@click.option("--selector", help="JMESPath expression to select resources")
+@click.option("--force", is_flag=True, default=False, help="Force overwrite if tag exists")
+def cmd_set(
+    tag: str,
+    resource: Optional[str],
+    region: Optional[str],
+    partition: Optional[str],
+    selector: Optional[str],
+    force: Optional[bool],
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    debug: Optional[bool],
+    save: Optional[bool],
+):
+    if len(tag) < 1:
+        click.echo("Error: must set at least one tag, see the usage of SET command.")
+        click.echo(click.get_current_context().get_help())
+        return
+
+    init_logger(debug, save)
+
+    opt_tags = tag.split(",")
+    tags = []
+    for t in opt_tags:
+        if "=" in t:
+            kv = t.split("=", 1)
+            tags.append({"key": kv[0], "value": kv[1]})
+        else:
+            click.echo(f"Error: invalid tag option")
+            return
+
+    inputs = {
+        "action": "set",
+        "partition": partition,
+        "regions": region.split(",") if region else [],
+        "selector": selector,
+        "tags": tags,
+        "resources": resource.split(",") if resource else [],
+        "force": force,
+        "credential": {
+            "access_key": access_key,
+            "secret_key": secret_key,
+            "profile": profile,
+        },
+    }
+
+    config = init_config(inputs)
+    executor.run(config)
+
+
+@cli.command("unset", help="Unset tag from resources")
+@click.option(
+    "--key",
+    help="Tag to unset if key is equals, use ',' to join multi keys",
+)
+@click.option(
+    "--value",
+    "value",
+    help="""
+    Tag to unset if value is equals, when use ',' to join multi tags has any one of the specified values will be unset
+    """,
+)
+@click.option(
+    "--tag",
+    "tag",
+    help="Tag to unset in KEY=VALUE format, only unset when both key and value are matched, use ',' to join multi",
+)  # noqa: E501
+@click.option("-r", "--region", "region", help="The AWS Region to use for tagging resources, use ',' to join multi")
+def cmd_unset(key: Optional[str], value: Optional[str], tag: Optional[str]):
+    if key is None and tag is None:
+        click.echo("Error: must set [KEY] or [VALUE] to list resources, see the usage of LIST command.")
+        click.echo(click.get_current_context().get_help())
+        return
+
+
+@cli.command("list", help="List resources by tag")
+@cli_common_options
+@click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
+@click.option("--selector", help="JMESPath expression to select resources")
+def cmd_list(
+    resource: Optional[str],
+    region: Optional[str],
+    partition: Optional[str],
+    selector: Optional[str],
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    debug: Optional[bool],
+    save: Optional[bool],
+):
+    init_logger(debug, save)
+
+    inputs = {
+        "action": "list",
+        "partition": partition,
+        "regions": region.split(",") if region else [],
+        "selector": selector,
+        "tags": [],
+        "resources": resource.split(",") if resource else [],
+        "force": False,
+        "credential": {
+            "access_key": access_key,
+            "secret_key": secret_key,
+            "profile": profile,
+        },
+    }
+
+    config = init_config(inputs)
+    executor.run(config)
+
+
+@cli.command("exec", help="Execute action with config file")
+@click.option("-c", "--config", "cfg", help="Config file", type=click.Path(exists=True))
+@click.option("--access_key", help="Access key of AWS AK/SK")
+@click.option("--secret_key", help="Secret key of AWS AK/SK")
+@click.option("--profile", help="Profile name of AWS CLI Credential")
+@click.option("--save", is_flag=True, default=False, help="Save log to file")
+def execute(
+    cfg: str,
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    debug: Optional[bool],
+    save: Optional[bool],
+):
+    init_logger(debug, save)
+
+    with open(cfg, "r") as f:
+        inputs = json.loads(f.read())
+
+        if not inputs["credential"]:
+            inputs["credential"] = {}
+
+        if access_key:
+            inputs["credential"]["access_key"] = access_key
+        if secret_key:
+            inputs["credential"]["secret_key"] = secret_key
+        if profile:
+            inputs["credential"]["profile"] = profile
+
+        config = init_config(inputs)
+        executor.run(config)
 
 
 def run():
-    parser = ArgumentParser(
-        prog="awstt",
-        description="AWS-Tag-Tools: A bulk management tool for the tags of AWS resources",
-        formatter_class=RawFormatter,
-        usage=SUPPRESS,
-    )
-
-    parser.add_argument(
-        "--key",
-        type=str,
-        required=False,
-        help="the key of tag will be tagged to resources",
-    )
-    parser.add_argument(
-        "--value",
-        type=str,
-        required=False,
-        help="the value of tag will be tagged to resources",
-    )
-    parser.add_argument(
-        "--overwrite",
-        required=False,
-        default=False,
-        action="store_true",
-        help="whether to overwrite exists value of tag when key is existed\ndefault to `False`",
-    )
-    parser.add_argument(
-        "--regions",
-        type=str,
-        required=False,
-        help="the AWS regions to execute actions\nwill auto detect if not set\nuse `','` to separate multi regions",
-    )
-    parser.add_argument(
-        "--profile",
-        type=str,
-        required=False,
-        help="the name of AWS credentials profile to use",
-    )
-    parser.add_argument(
-        "--partition",
-        type=str,
-        required=False,
-        choices=["aws", "aws-cn", "aws-us-gov"],
-        default="aws",
-        help="the partition to execute actions, must be one of `'aws' | 'aws-cn' | 'aws-us-gov'`\ndefault to `'aws'`",
-    )
-    parser.add_argument(
-        "--list-services",
-        required=False,
-        action="store_true",
-        help="list all supported services by this tool and exit",
-    )
-
-    args = parser.parse_args()
-
-    if args.list_services is True:
-        print("==== supported services ====")
-        workers = Scanner.list_available()
-        for worker in workers:
-            print(f" --> {worker}")
-
-        sys.exit(0)
-
-    if args.key is None or args.value is None:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-
-    execute(
-        dict(
-            partition=args.partition,
-            regions=args.regions,
-            profile=args.profile,
-            tag_key=args.key,
-            tag_value=args.value,
-            overwrite=args.overwrite,
-        ),
-        None,
-    )
+    cli.add_command(info)
+    cli(prog_name="awstt", auto_envvar_prefix="AWSTT")

@@ -1,54 +1,40 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Optional, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("IAM::Policy")
+@Scanner.register("IAM:Policy")
 class IAMPolicyScanner(Scanner):
-    # noinspection PyUnusedLocal
-    def __init__(
-        self,
-        account_id: str,
-        *,
-        partition: str = "aws",
-        regions: Optional[List[str]] = None,
-        profile: Optional[str] = None,
-    ):
-        """
-        IAM is global service, ensure just create one global client
-        """
-        super().__init__(account_id, profile=profile, regions=["global"])
+    def __init__(self, partition, _, credential):
+        super().__init__(partition, ["global"], credential)
 
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, policy: dict) -> AWSResource:
+        return AWSResource(
+            self.category,
+            self._build_arn(client, policy["Arn"]),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in policy.get("Tags", [])],
+            policy,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("list_policies").paginate(**{"Scope": "Local"})
 
-        policies = item.get("Policies", [])
-        for policy in policies:
-            resource_tags = {self._tags_key: []}
-            tags_paginator = client.get_paginator("list_policy_tags").paginate(PolicyArn=policy.get("Arn"))
-            # noinspection DuplicatedCode
-            for page in tags_paginator:
-                resource_tags[self._tags_key].extend(page.get(self._tags_key, []))
-
-            if overwrite is True or not self._has_tag(resource_tags, key):
-                resources.append((policy.get("Arn"), self._get_tag(resource_tags, key)))
+        for page in paginator:
+            for policy in page.get("Policies", []):
+                resources.append(self.build_resource(client, policy))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "iam"
 
     @property
-    def _paginator(self):
-        return "list_policies"
+    def _arn_resource_type(self) -> str:
+        return "policy"
 
     @property
-    def _filters(self):
-        return {"Scope": "Local"}
+    def category(self) -> str:
+        return "IAM:Policy"

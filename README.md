@@ -55,10 +55,10 @@ awstt --help
 
 ## TODO
 
-- [] Support for Untagging Resources
-- [] Deploying to Lambda with CloudFormation
-- [] Tag or untag resources with specified type(s）
-- [] Tag or untag resources with specified ARN(s)
+- [ ] Support for Untagging Resources
+- [ ] Deploying to Lambda with CloudFormation
+- [ ] Tag or untag resources with specified type(s）
+- [ ] Tag or untag resources with specified ARN(s)
 
 ## License
 

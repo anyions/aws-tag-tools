@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aws-tag-tools"
-version = "0.1.1"
+version = "1.0.0"
 description = "A bulk management tool for the tags of AWS resources"
 authors = ["AnyIons <anyions@hotmail.com>"]
 maintainers = ["AnyIons <anyions@hotmail.com>"]
@@ -25,12 +25,13 @@ include = ["LICENSE"]
 packages = [{ include = "awstt" }]
 
 [tool.poetry.dependencies]
-python = "~3.11"
+python = "^3.11"
 boto3 = "^1.34.104"
-loguru = { version = "^0.7.2", optional = true }
+rich = { version = "^13.9.2", optional = true }
+rich-click = { version = "^1.8.3", optional = true }
 
 [tool.poetry.extras]
-cli = ["loguru"]
+cli = ["rich", "rich-click"]
 
 [tool.poetry.scripts]
 awstt = 'awstt.cli:run'
@@ -39,6 +40,11 @@ awstt = 'awstt.cli:run'
 isort = "^5.13.2"
 black = "^24.4.2"
 pre-commit = "^3.7.1"
+
+[[tool.poetry.source]]
+name = "primary"
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+priority = "primary"
 
 [tool.black]
 line-length = 120

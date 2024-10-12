@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import time
-from typing import Dict, List, NotRequired, Optional, TypedDict
+from typing import List
 
 import boto3
+import botocore.config
 
+from awstt.config import Credential
+from awstt.worker.types import RegionalTaggingTarget, TaggingResponse
 from awstt.worker.utils import detect_region
 
 
@@ -14,69 +15,100 @@ logger = logging.getLogger(__name__)
 RESOURCES_PER_REQUEST = 20  # The max limited to tag resources per request
 
 
-class TaggingResource(TypedDict):
-    arn: str
-    original_value: NotRequired[str]
-
-
 class Tagger(object):
-    def __init__(self, account_id: str, *, partition: str = "aws", profile: Optional[str] = None):
+    def __init__(self, partition: str, credential: Credential):
         """
         Initialize a resource tagger to tag resources
 
-        :param account_id: The AWS account id used to tag resources
-        :type account_id: str
-        :param partition: The AWS partition name, can be one of `'aws' | 'aws-cn' | 'aws-us-gov'`, default to `'aws'`
-        :type partition: str
-        :param profile: The profile name of AWS credentials used when execute as cli, default to `None`
-        :type profile: str, optional
+        :param partition: The AWS partition of tagger
+        :param credential: The AWS credential of tagger
+        :type credential: Credential
         """
 
-        self._account_id = account_id
-        self._partition = partition
-        self._profile = profile
+        session = boto3.Session(
+            aws_access_key_id=credential.access_key,
+            aws_secret_access_key=credential.secret_key,
+            profile_name=credential.profile,
+        )
 
-    def execute(self, *, key: str, value: str, regional_resources: Dict[str, List[TaggingResource]]):
+        self._session = session
+        self._partition = partition
+        self._account_id = session.client("sts").get_caller_identity().get("Account")
+
+    def execute(self, targets: List[RegionalTaggingTarget]) -> List[TaggingResponse]:
         """
         Tag resources use ResourceGroupsTaggingApi
 
-        :param regional_resources: The regional resources to be tagging
-        :type regional_resources: Dict[str, List[TaggingResource]]
-        :param key: The key of tag
-        :type key: str
-        :param value: The value of tag
-        :type value: str
+        :param targets: The regional resources to apply tags
+        :type targets: List[RegionalTaggingTarget]
         """
-        for region, resources in regional_resources.items():
-            session = boto3.Session(profile_name=self._profile)
-            # noinspection SpellCheckingInspection
-            tagger = session.client(
-                "resourcegroupstaggingapi",
-                region_name=detect_region(region, self._partition),
+
+        responses = []
+
+        for target in targets:
+            logger.info(
+                f"Executing resources tagging: "
+                f"region - {detect_region(target.region, self._partition)}, "
+                f"resources - {[res.arn for res in target.resources]}, "
+                f"tags - {[t.dict() for t in target.tags]}"
             )
 
-            if len(resources) == 0:
+            # noinspection SpellCheckingInspection
+            client = self._session.client(
+                "resourcegroupstaggingapi",
+                region_name=detect_region(target.region, self._partition),
+                config=botocore.config.Config(
+                    retries={"max_attempts": 3, "mode": "standard"},
+                ),
+            )
+
+            if len(target.resources) == 0 or len(target.tags) == 0:
                 continue
 
+            """limit resources per request"""
             for chunks in [
-                resources[i : i + RESOURCES_PER_REQUEST]  # noqa: E203
-                for i in range(0, len(resources), RESOURCES_PER_REQUEST)
+                target.resources[i : i + RESOURCES_PER_REQUEST]  # noqa: E203
+                for i in range(0, len(target.resources), RESOURCES_PER_REQUEST)
             ]:
-                """tag max 20 resources per action"""
-                resp = tagger.tag_resources(ResourceARNList=[c.get("arn") for c in chunks], Tags={key: value})
+                client_resp = client.tag_resources(
+                    ResourceARNList=[c.arn for c in chunks],
+                    Tags={t.key: t.value for t in target.tags},
+                )
 
-                for res in chunks:
-                    arn = res.get("arn")
-                    original_value = res.get("original_value", None)
+                for item in chunks:
+                    status = "Success"
 
-                    logger.info(
-                        "resource tagged - %s",
-                        dict(
-                            resource=arn,
-                            status=arn not in resp,
-                            original_value=original_value,
-                            error=resp.get(arn, {}).get("ErrorMessage", None),
-                        ),
+                    hint = client_resp.get("FailedResourcesMap", {}).get(item.arn, {}).get("ErrorMessage", None)
+                    if hint:
+                        status = "Failed"
+                    else:
+                        overwrites = []
+                        for exists_tag in item.tags:
+                            for tag in target.tags:
+                                if exists_tag.key == tag.key and exists_tag.value != tag.value:
+                                    overwrites.append(f"{tag.key}: {exists_tag.value} -> {tag.value}")
+                        if len(overwrites) > 0:
+                            status = "Overwrite"
+                            hint = ", ".join(overwrites)
+
+                    item_resp = TaggingResponse(
+                        category=item.category,
+                        arn=item.arn,
+                        status=status,
+                        hint=hint,
                     )
+                    responses.append(item_resp)
 
                 time.sleep(1)  # avoid throttling
+
+            failures = len([res for res in responses if res.status == "Failed"])
+            logger.info(
+                f"Finished resources tagging: "
+                f"region - {target.region}, "
+                f"resources - {[res.arn for res in target.resources]}, "
+                f"tags - {[t.dict() for t in target.tags]}, "
+                f"successes - {len(target.resources) - failures}, "
+                f"failures - {failures}"
+            )
+
+        return responses

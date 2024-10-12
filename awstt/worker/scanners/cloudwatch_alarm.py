@@ -1,43 +1,44 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("CloudWatch::Alarm")
+@Scanner.register("CloudWatch:Alarm")
 class CloudWatchAlarmScanner(Scanner):
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, alarm: dict) -> AWSResource:
+        arn = alarm["AlarmArn"]
+        resource_tags = client.list_tags_for_resource(ResourceARN=arn)
+
+        return AWSResource(
+            self.category,
+            self._build_arn(client, arn),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in resource_tags.get("Tags", [])],
+            alarm,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("describe_alarms").paginate()
 
-        alarms = []
-        alarms.extend(item.get("CompositeAlarms", []))
-        alarms.extend(item.get("MetricAlarms", []))
+        for page in paginator:
+            alarms = []
+            alarms.extend(page.get("CompositeAlarms", []))
+            alarms.extend(page.get("MetricAlarms", []))
 
-        for alarm in alarms:
-            arn = alarm.get("AlarmArn", None)
-            if arn is None:
-                continue
-
-            resource_tags = client.list_tags_for_resource(ResourceARN=arn)
-            origin_value = self._get_tag(resource_tags, key)
-            if overwrite or origin_value is None:
-                resources.append((arn, origin_value))
+            for alarm in alarms:
+                resources.append(self.build_resource(client, alarm))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "cloudwatch"
 
     @property
-    def _paginator(self):
-        return "describe_alarms"
+    def _arn_resource_type(self) -> str:
+        return "alarm"
 
     @property
-    def _filters(self):
-        return {}
+    def category(self) -> str:
+        return "CloudWatch:Alarm"

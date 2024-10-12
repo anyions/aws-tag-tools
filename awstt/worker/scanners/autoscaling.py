@@ -1,36 +1,37 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("EC2::AutoScalingGroup")
-class AutoScalingScanner(Scanner):
-    # noinspection PyUnusedLocal
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+@Scanner.register("EC2:AutoScalingGroup")
+class AutoScalingGroupScanner(Scanner):
+    def build_resource(self, client: any, group: dict) -> AWSResource:
+        return AWSResource(
+            self.category,
+            self._build_arn(client, group["AutoScalingGroupARN"]),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in group.get("Tags", [])],
+            group,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("describe_auto_scaling_groups").paginate()
 
-        groups = item.get("AutoScalingGroups", [])
-        for group in groups:
-            if overwrite is True or not self._has_tag(group, key):
-                arn = group.get("AutoScalingGroupARN")
-                resources.append((arn, self._get_tag(group, key)))
+        for page in paginator:
+            for group in page.get("AutoScalingGroups", []):
+                resources.append(self.build_resource(client, group))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "autoscaling"
 
     @property
-    def _paginator(self):
-        return "describe_auto_scaling_groups"
+    def _arn_resource_type(self) -> str:
+        return "autoscaling"
 
     @property
-    def _filters(self):
-        return {}
+    def category(self) -> str:
+        return "EC2:AutoScalingGroup"

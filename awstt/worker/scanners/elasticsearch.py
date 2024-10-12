@@ -1,44 +1,45 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import Iterable, List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("Elasticsearch")
+@Scanner.register("Elasticsearch:Domain")
 class ElasticsearchScanner(Scanner):
-    def _list_resources(self, client: any) -> Iterable[dict]:
+    def build_resource(self, client: any, domain: dict) -> AWSResource:
+        arn = domain["ARN"]
+        resource_tags = client.list_tags(ARN=arn)
+
+        return AWSResource(
+            self.category,
+            self._build_arn(client, arn),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in resource_tags.get("Tags", [])],
+            domain,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
+        resources = []
+
         domains = client.list_domain_names(EngineType="Elasticsearch").get("DomainNames", [])
         if len(domains) == 0:
             return []
 
-        return [client.describe_elasticsearch_domains(DomainNames=[d.get("DomainName") for d in domains])]
+        paginator = [client.describe_elasticsearch_domains(DomainNames=[d.get("DomainName") for d in domains])]
 
-    # noinspection PyUnusedLocal, DuplicatedCode
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
-        resources = []
-
-        domains = item.get("DomainStatusList", [])
-        for domain in domains:
-            arn = domain.get("ARN", None)
-            if arn is None:
-                continue
-
-            resource_tags = client.list_tags(ARN=arn)
-            origin_value = self._get_tag(resource_tags, key)
-            if overwrite or origin_value is None:
-                resources.append((arn, origin_value))
+        for page in paginator:
+            for domain in page.get("DomainStatusList", []):
+                resources.append(self.build_resource(client, domain))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "es"
 
     @property
-    def _tags_key(self) -> str:
-        return "TagList"
+    def _arn_resource_type(self) -> str:
+        return "domain"
+
+    @property
+    def category(self) -> str:
+        return "Elasticsearch:Domain"

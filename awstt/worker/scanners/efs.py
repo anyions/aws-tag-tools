@@ -1,36 +1,42 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
 @Scanner.register("EFS")
 class EFSScanner(Scanner):
-    # noinspection PyUnusedLocal
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
-        resources = []
+    def build_resource(self, client: any, fs: dict) -> AWSResource:
+        return AWSResource(
+            self.category,
+            self._build_arn(client, fs["FileSystemArn"]),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in fs.get("Tags", [])],
+            fs,
+        )
 
-        systems = item.get("FileSystems", [])
-        for system in systems:
-            if overwrite is True or not self._has_tag(system, key):
-                arn = system.get("FileSystemArn")
-                resources.append((arn, self._get_tag(system, key)))
+    def _list_resources(self, client: any) -> List[AWSResource]:
+        resources = []
+        paginator = client.get_paginator("describe_file_systems").paginate()
+
+        for page in paginator:
+            for fs in page.get("FileSystems", []):
+                resources.append(self.build_resource(client, fs))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "efs"
 
     @property
-    def _paginator(self):
-        return "describe_file_systems"
+    def _arn_service_type(self) -> str:
+        # noinspection SpellCheckingInspection
+        return "elasticfilesystem"
 
     @property
-    def _filters(self):
-        return {}
+    def _arn_resource_type(self) -> str:
+        return "file-system"
+
+    @property
+    def category(self) -> str:
+        return "EFS"

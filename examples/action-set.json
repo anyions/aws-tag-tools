@@ -1,0 +1,54 @@
+{
+  "action": "set",
+  "partition": "aws-cn",
+  "regions": [
+    "us-east-1",
+    "us-west-1"
+  ],
+  "tags": [
+    {
+      "key": "tagged_by",
+      "value": "awstt"
+    },
+    {
+      "key": "tagged_at",
+      "value": "${datetime.now().strftime('%Y-%m-%d %H:%M:%S')}$"
+    }
+  ],
+  "resources": [
+    "ec2:instance",
+    "arn:aws:rds:*:*:db:mysql-instance",
+    {
+      "target": "arn:aws:ec2:*:*:vpc/*",
+      "tags": [
+        {
+          "key": "tagged_at",
+          "value": "2024-01-01 00:00:00"
+        },
+        {
+          "key": "owner",
+          "value": "AnyIons"
+        }
+      ],
+      "force": true,
+      "selector": "tags[?key == 'others'] == null"
+    },
+    {
+      "target": "arn:aws:ec2:*:*:ebs/*",
+      "tags": [
+        {
+          "key": "owner",
+          "value": "aws-tag-tools"
+        }
+      ],
+      "force": true,
+      "selector": "tags[?key == 'others'] == null"
+    }
+  ],
+  "force": false,
+  "credential": {
+    "access_key": "my_access_key",
+    "secret_key": "my_secret_key",
+    "profile": "my_profile"
+  }
+}

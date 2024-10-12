@@ -1,29 +1,31 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("CloudFormation")
+@Scanner.register("CloudFormation:Stack")
 class CloudFormationScanner(Scanner):
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
-        resources = []
+    def build_resource(self, client: any, stack: dict) -> AWSResource:
+        return AWSResource(
+            self.category,
+            self._build_arn(client, stack["StackId"]),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in stack.get("Tags", [])],
+            stack,
+        )
 
-        stacks = item.get("Stacks", [])
-        for stack in stacks:
-            if overwrite is True or not self._has_tag(stack, key):
-                arn = self._build_arn(client, stack.get("StackId", ""))
-                resources.append((arn, self._get_tag(stack, key)))
+    def _list_resources(self, client: any) -> List[AWSResource]:
+        resources = []
+        paginator = client.get_paginator("describe_stacks").paginate()
+
+        for page in paginator:
+            for stack in page.get("Stacks", []):
+                resources.append(self.build_resource(client, stack))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "cloudformation"
 
     @property
@@ -31,9 +33,5 @@ class CloudFormationScanner(Scanner):
         return "stack"
 
     @property
-    def _paginator(self):
-        return "describe_stacks"
-
-    @property
-    def _filters(self):
-        return {}
+    def category(self) -> str:
+        return "CloudFormation:Stack"

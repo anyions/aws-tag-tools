@@ -1,40 +1,39 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("EMR::Cluster")
+@Scanner.register("EMR:Cluster")
 class EMRClusterScanner(Scanner):
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, cluster: dict) -> AWSResource:
+        detail = client.describe_cluster(ClusterId=cluster.get("Id")).get("Cluster", {})
+
+        return AWSResource(
+            self.category,
+            self._build_arn(client, detail.get("ClusterArn")),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in detail.get("Tags", [])],
+            detail,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("list_clusters").paginate()
 
-        clusters = item.get("Clusters", [])
-        for cluster in clusters:
-            arn = cluster.get("ClusterArn", None)
-            cluster_id = cluster.get("Id", None)
-            if arn is None or cluster_id is None:
-                continue
-
-            detail = client.describe_cluster(ClusterId=cluster_id).get("Cluster", {})
-            if overwrite or not self._has_tag(detail, key):
-                resources.append((arn, self._get_tag(detail, key)))
+        for page in paginator:
+            for cluster in page.get("Clusters", []):
+                resources.append(self.build_resource(client, cluster))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "emr"
 
     @property
-    def _paginator(self):
-        return "list_clusters"
+    def _arn_resource_type(self) -> str:
+        return "cluster"
 
     @property
-    def _filters(self):
-        return {"ClusterStates": ["STARTING", "BOOTSTRAPPING", "RUNNING", "WAITING"]}
+    def category(self) -> str:
+        return "EMR:Cluster"

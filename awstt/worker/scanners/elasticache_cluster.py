@@ -1,45 +1,40 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("ElastiCache::Cluster")
+@Scanner.register("ElastiCache:Cluster")
 class ElastiCacheClusterScanner(Scanner):
-    # noinspection PyUnusedLocal
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, cache: dict) -> AWSResource:
+        arn = cache["ARN"]
+        resource_tags = client.list_tags_for_resource(ResourceName=arn)
+
+        return AWSResource(
+            self.category,
+            self._build_arn(client, arn),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in resource_tags.get("Tags", [])],
+            cache,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("describe_cache_clusters").paginate()
 
-        clusters = item.get("CacheClusters", [])
-        # noinspection DuplicatedCode
-        for cluster in clusters:
-            arn = cluster.get("ARN", None)
-            if arn is None:
-                continue
-
-            resource_tags = client.list_tags_for_resource(ResourceName=arn)
-            if overwrite or not self._has_tag(resource_tags, key):
-                resources.append((arn, self._get_tag(resource_tags, key)))
+        for page in paginator:
+            for cache in page.get("CacheClusters", []):
+                resources.append(self.build_resource(client, cache))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "elasticache"
-
-    @property
-    def _paginator(self):
-        return "describe_cache_clusters"
 
     @property
     def _arn_resource_type(self) -> str:
         return "cluster"
 
     @property
-    def _tags_key(self) -> str:
-        return "TagList"
+    def category(self) -> str:
+        return "ElastiCache:Cluster"

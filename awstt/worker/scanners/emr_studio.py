@@ -1,39 +1,39 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("EMR::Studio")
+@Scanner.register("EMR:Studio")
 class EMRStudioScanner(Scanner):
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, studio: dict) -> AWSResource:
+        detail = client.describe_studio(StudioId=studio.get("Id")).get("Studio", {})
+
+        return AWSResource(
+            self.category,
+            self._build_arn(client, detail.get("StudioArn")),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in detail.get("Tags", [])],
+            detail,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("list_studios").paginate()
 
-        studios = item.get("Studios", [])
-        for studio in studios:
-            studio_id = studio.get("StudioId", None)
-            if studio_id is None:
-                continue
-
-            detail = client.describe_studio(StudioId=studio_id).get("Studio", {})
-            if overwrite or not self._has_tag(detail, key):
-                resources.append((detail.get("StudioArn"), self._get_tag(detail, key)))
+        for page in paginator:
+            for studio in page.get("Studios", []):
+                resources.append(self.build_resource(client, studio))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "emr"
 
     @property
-    def _paginator(self):
-        return "list_studios"
+    def _arn_resource_type(self) -> str:
+        return "studio"
 
     @property
-    def _filters(self):
-        return {}
+    def category(self) -> str:
+        return "EMR:Studio"

@@ -4,37 +4,37 @@ from awstt.worker.scanner import Scanner
 from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("KMS")
-class KMSScanner(Scanner):
-    def build_resource(self, client: any, key: dict) -> AWSResource:
-        resource_tags = client.list_resource_tags(KeyId=key["KeyId"])
-        detail = client.describe_key(KeyId=key["KeyId"])["KeyMetadata"]
+@Scanner.register("DynamoDB:Table")
+class DynamoDBScanner(Scanner):
+    def build_resource(self, client: any, table: dict) -> AWSResource:
+        arn = self._build_arn(client, table.get("name"))
+        resource_tags = client.list_tags_for_resource(ResourceArn=arn)
 
         return AWSResource(
             self.category,
-            self._build_arn(client, key["KeyArn"]),
+            arn,
             [AWSResourceTag(tag["Key"], tag["Value"]) for tag in resource_tags.get("Tags", [])],
-            detail,
+            table,
         )
 
     def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
-        paginator = client.get_paginator("list_keys").paginate()
+        paginator = client.get_paginator("list_tables").paginate()
 
         for page in paginator:
-            for key in page.get("Keys", []):
-                resources.append(self.build_resource(client, key))
+            for table in page.get("TableNames", []):
+                resources.append(self.build_resource(client, {"name": table}))
 
         return resources
 
     @property
     def _service_name(self) -> str:
-        return "kms"
+        return "dynamodb"
 
     @property
     def _arn_resource_type(self) -> str:
-        return "key"
+        return "table"
 
     @property
     def category(self) -> str:
-        return "KMS"
+        return "DynamoDB:Table"

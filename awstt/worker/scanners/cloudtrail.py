@@ -1,53 +1,40 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Optional, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
 @Scanner.register("CloudTrail")
 class CloudTrailScanner(Scanner):
-    # noinspection PyUnusedLocal
-    def __init__(
-        self,
-        account_id: str,
-        *,
-        partition: str = "aws",
-        regions: Optional[List[str]] = None,
-        profile: Optional[str] = None,
-    ):
-        """
-        CloudTrail is global service, ensure just create one global client
-        """
-        super().__init__(account_id, profile=profile, regions=["global"])
+    def __init__(self, partition, _, credential):
+        super().__init__(partition, ["global"], credential)
 
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, trail: dict) -> AWSResource:
+        arn = trail["TrailARN"]
+        resource_tags = []
+        for page in client.get_paginator("list_tags").paginate(ResourceIdList=[arn]):
+            for item in page.get("ResourceTagList", []):
+                resource_tags.extend(item.get("Items", []))
+
+        return AWSResource(
+            self.category,
+            self._build_arn(client, arn),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in resource_tags],
+            trail,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("list_trails").paginate()
 
-        trails = item.get("Trails", [])
-        # noinspection SpellCheckingInspection
-        arns = [t.get("TrailARN") for t in trails]
-
-        resources_tags = []
-        for chunks in [arns[i : i + 20] for i in range(0, len(arns), 20)]:  # noqa: E203
-            """list max 20 resources per action"""
-            for page in client.get_paginator("list_tags").paginate(ResourceIdList=chunks):
-                resources_tags.extend(page.get("ResourceTagList", []))
-
-        for tags in resources_tags:
-            arn = tags.get("ResourceId")
-            origin_value = self._get_tag(tags, key)
-            if overwrite or origin_value is None:
-                resources.append((arn, origin_value))
+        for page in paginator:
+            for trail in page.get("Trails", []):
+                resources.append(self.build_resource(client, trail))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "cloudtrail"
 
     @property
@@ -55,13 +42,5 @@ class CloudTrailScanner(Scanner):
         return "trail"
 
     @property
-    def _paginator(self):
-        return "list_trails"
-
-    @property
-    def _filters(self):
-        return {}
-
-    @property
-    def _tags_key(self) -> str:
-        return "TagsList"
+    def category(self) -> str:
+        return "CloudTrail"

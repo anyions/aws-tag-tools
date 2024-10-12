@@ -1,54 +1,40 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import List, Optional, Tuple, Union
+from typing import List
 
 from awstt.worker.scanner import Scanner
+from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("IAM::Role")
+@Scanner.register("IAM:Role")
 class IAMRoleScanner(Scanner):
-    # noinspection PyUnusedLocal
-    def __init__(
-        self,
-        account_id: str,
-        *,
-        partition: str = "aws",
-        regions: Optional[List[str]] = None,
-        profile: Optional[str] = None,
-    ):
-        """
-        IAM is global service, ensure just create one global client
-        """
-        super().__init__(account_id, profile=profile, regions=["global"])
+    def __init__(self, partition, _, credential):
+        super().__init__(partition, ["global"], credential)
 
-    def _get_resources_from_page(
-        self, client: any, item: dict, key: str, overwrite: bool = False
-    ) -> List[Tuple[str, Union[str, None]]]:
+    def build_resource(self, client: any, role: dict) -> AWSResource:
+        return AWSResource(
+            self.category,
+            self._build_arn(client, role["Arn"]),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in role.get("Tags", [])],
+            role,
+        )
+
+    def _list_resources(self, client: any) -> List[AWSResource]:
         resources = []
+        paginator = client.get_paginator("list_roles").paginate()
 
-        roles = item.get("Roles", [])
-        for role in roles:
-            resource_tags = {self._tags_key: []}
-            tags_paginator = client.get_paginator("list_role_tags").paginate(RoleName=role.get("RoleName"))
-            # noinspection DuplicatedCode
-            for page in tags_paginator:
-                resource_tags[self._tags_key].extend(page.get(self._tags_key, []))
-
-            if overwrite is True or not self._has_tag(resource_tags, key):
-                resources.append((role.get("Arn"), self._get_tag(resource_tags, key)))
+        for page in paginator:
+            for role in page.get("Roles", []):
+                resources.append(self.build_resource(client, role))
 
         return resources
 
     @property
-    def _client_name(self) -> str:
+    def _service_name(self) -> str:
         return "iam"
 
     @property
-    def _paginator(self):
-        return "list_roles"
+    def _arn_resource_type(self) -> str:
+        return "role"
 
     @property
-    def _filters(self):
-        return {}
+    def category(self) -> str:
+        return "IAM:Role"
