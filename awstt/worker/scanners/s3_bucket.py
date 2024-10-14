@@ -7,7 +7,10 @@ from awstt.worker.types import AWSResource, AWSResourceTag
 @Scanner.register("S3::Bucket")
 class S3BucketScanner(Scanner):
     def build_resource(self, client: any, bucket: dict) -> AWSResource:
-        resource_tags = client.get_bucket_tagging(Bucket=bucket["Name"])
+        try:
+            resource_tags = client.get_bucket_tagging(Bucket=bucket["Name"])
+        except:  # noqa: E722
+            resource_tags = {"TagSet": []}
 
         return AWSResource(
             self.category,
@@ -22,9 +25,13 @@ class S3BucketScanner(Scanner):
 
         for page in paginator:
             for bucket in page.get("Buckets", []):
-                resources.append(self.build_resource(client, bucket))
+                if client.get_bucket_location(Bucket=bucket["Name"])["LocationConstraint"] == client.meta.region_name:
+                    resources.append(self.build_resource(client, bucket))
 
         return resources
+
+    def _build_arn(self, client: any, arn_or_id: str) -> str:
+        return f"arn:aws:s3:::{arn_or_id}"
 
     @property
     def _service_name(self) -> str:
