@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List
+from typing import List, Union
 
 import boto3
 import botocore.config
@@ -9,20 +9,22 @@ from awstt.config import Credential
 from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, TaggingResponse
 from awstt.worker.utils import detect_region
 
-
 logger = logging.getLogger(__name__)
 
 RESOURCES_PER_REQUEST = 20  # The max limited to tag resources per request
 
 
 class Tagger(object):
-    def __init__(self, partition: str, credential: Credential):
+    def __init__(self, partition: str, credential: Credential, action="set"):
         """
         Initialize a resource tagger to tag resources
 
         :param partition: The AWS partition of tagger
+        :type partition: str
         :param credential: The AWS credential of tagger
         :type credential: Credential
+        :param action: The action of tagger, support "set" and "delete"
+        :type action: str
         """
 
         session = boto3.Session(
@@ -34,8 +36,9 @@ class Tagger(object):
         self._session = session
         self._partition = partition
         self._account_id = session.client("sts").get_caller_identity().get("Account")
+        self._action = action
 
-    def execute_one(self, region: str, target: AWSResource, tags: List[AWSResourceTag]) -> TaggingResponse:
+    def execute_one(self, region: str, target: AWSResource, tags: List[Union[AWSResourceTag, str]]) -> TaggingResponse:
         """
         Tag one resource use ResourceGroupsTaggingApi
 
@@ -47,7 +50,7 @@ class Tagger(object):
         :type tags: List[AWSResourceTag]
         """
         logger.debug(
-            f"Executing resource tagging: "
+            f"Executing resource {'tagging' if self._action == 'set' else 'untagging'}: "
             f"region - {detect_region(region, self._partition)}, "
             f"resource - {target}, "
             f"tags - {[t.dict() for t in tags]}"
@@ -62,7 +65,17 @@ class Tagger(object):
             ),
         )
 
-        client_resp = client.tag_resources(ResourceARNList=[target.arn], Tags={t.key: t.value for t in tags})
+        if self._action == "set":
+            client_resp = client.tag_resources(
+                ResourceARNList=[target.arn],
+                Tags={t.key: t.value for t in tags},
+            )
+        else:
+            client_resp = client.untag_resources(
+                ResourceARNList=[target.arn],
+                TagKeys=tags,
+            )
+
         hint = client_resp.get("FailedResourcesMap", {}).get(target.arn, {}).get("ErrorMessage", None)
 
         return TaggingResponse(
@@ -84,13 +97,13 @@ class Tagger(object):
 
         for target in targets:
             logger.debug(
-                f"Executing resources tagging: "
+                f"Executing resources {'tagging' if self._action == 'set' else 'untagging'}: "
                 f"region - {detect_region(target.region, self._partition)}, "
                 f"resources - {[res.arn for res in target.resources]}, "
-                f"tags - {[t.dict() for t in target.tags]}"
+                f"tags - {[t.dict() for t in target.tags] if self._action == 'set' else target.tags}"
             )
 
-            # noinspection SpellCheckingInspection
+            # noinspection SpellCheckingInspection,DuplicatedCode
             client = self._session.client(
                 "resourcegroupstaggingapi",
                 region_name=detect_region(target.region, self._partition),
@@ -107,10 +120,16 @@ class Tagger(object):
                 target.resources[i : i + RESOURCES_PER_REQUEST]  # noqa: E203
                 for i in range(0, len(target.resources), RESOURCES_PER_REQUEST)
             ]:
-                client_resp = client.tag_resources(
-                    ResourceARNList=[c.arn for c in chunks],
-                    Tags={t.key: t.value for t in target.tags},
-                )
+                if self._action == "set":
+                    client_resp = client.tag_resources(
+                        ResourceARNList=[c.arn for c in chunks],
+                        Tags={t.key: t.value for t in target.tags},
+                    )
+                else:
+                    client_resp = client.untag_resources(
+                        ResourceARNList=[c.arn for c in chunks],
+                        TagKeys=target.tags,
+                    )
 
                 for item in chunks:
                     status = "Success"
@@ -118,15 +137,20 @@ class Tagger(object):
                     hint = client_resp.get("FailedResourcesMap", {}).get(item.arn, {}).get("ErrorMessage", None)
                     if hint:
                         status = "Failed"
-                    else:
+                    elif self._action == "set":
                         overwrites = []
+
                         for exists_tag in item.tags:
                             for tag in target.tags:
                                 if exists_tag.key == tag.key and exists_tag.value != tag.value:
                                     overwrites.append(f"{tag.key}: {exists_tag.value} -> {tag.value}")
+
                         if len(overwrites) > 0:
                             status = "Overwrite"
                             hint = ", ".join(overwrites)
+                    elif self._action == "unset":
+                        # TODO log unsetted tags
+                        pass
 
                     item_resp = TaggingResponse(
                         category=item.category,
@@ -136,16 +160,15 @@ class Tagger(object):
                     )
                     responses.append(item_resp)
 
-                time.sleep(1)  # avoid throttling
+                time.sleep(0.3)  # avoid throttling
 
             failures = len([res for res in responses if res.status == "Failed"])
             logger.debug(
-                f"Finished resources tagging: "
+                f"Finished resources {'tagging' if self._action == 'set' else 'untagging'}: "
                 f"region - {target.region}, "
                 f"resources - {[res.arn for res in target.resources]}, "
-                f"tags - {[t.dict() for t in target.tags]}, "
-                f"successes - {len(target.resources) - failures}, "
-                f"failures - {failures}"
+                f"tags - {[t.dict() for t in target.tags] if self._action == 'set' else target.tags}",
+                f"successes - {len(target.resources) - failures}, " f"failures - {failures}",
             )
 
         return responses

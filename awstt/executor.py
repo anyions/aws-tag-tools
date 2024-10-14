@@ -1,11 +1,11 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from awstt import output
 from awstt.config import Config, ConfigError, Tag, check_config
 from awstt.worker.thread import Scanner, ScanningThread, Tagger, TaggingThread
 from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, ResourceFilter, TaggingResponse
-from awstt.worker.utils import is_arn, is_arn_wild_match, parse_arn
+from awstt.worker.utils import filter_tags, is_arn, is_arn_wild_match, parse_arn
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
     return ScanningThread.execute(console)
 
 
-def _group_resources(resources: List[AWSResource], tags: List[Tag], force: bool) -> List[RegionalTaggingTarget]:
+def _group_tag_resources(resources: List[AWSResource], tags: List[Tag], force: bool) -> List[RegionalTaggingTarget]:
     class TaggingGroup:
         # noinspection SpellCheckingInspection
         def __init__(self, rs: List[AWSResource], ts: List[Tag]):
@@ -115,7 +115,7 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
     tagger = Tagger(config.partition, config.credential)
 
     if len(config.resources) == 0:
-        g_resources = _group_resources(resources, config.tags, config.force)
+        g_resources = _group_tag_resources(resources, config.tags, config.force)
 
         TaggingThread.add(g_resources)
     else:
@@ -131,10 +131,9 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
                         targets.append(resource)
 
                 if len(targets) > 0:
-                    g_resources = _group_resources(targets, g_tags, config.force)
+                    g_resources = _group_tag_resources(targets, g_tags, config.force)
                     TaggingThread.add(g_resources)
             else:
-                tagger = Tagger(config.partition, config.credential)
                 force = c_resource.force or config.force
                 tags: List[Tag] = []
 
@@ -154,8 +153,85 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
                         targets.append(resource)
 
                 if len(targets) > 0:
-                    g_resources = _group_resources(targets, tags, force)
+                    g_resources = _group_tag_resources(targets, tags, force)
                     TaggingThread.add(g_resources)
+
+    return TaggingThread.execute(tagger, console)
+
+
+def _group_untag_resources(
+    resources_with_filtered_tags: List[Tuple[AWSResource, List[str]]]
+) -> List[RegionalTaggingTarget]:
+    regional_resources: Dict[str, Dict] = {}
+
+    for item in resources_with_filtered_tags:
+        resource, tags = item[0], item[1]
+
+        region = parse_arn(resource.arn).region
+        if region not in regional_resources:
+            regional_resources[region] = {}
+
+        tags_key = ",".join(tags)
+        if tags_key not in regional_resources[region]:
+            regional_resources[region][tags_key] = {"tags": tags, "resources": []}
+
+        regional_resources[region][tags_key]["resources"].append(resource)
+
+    resp = []
+    for region, item in regional_resources.items():
+        for tags_key, target in item.items():
+            resp.append(RegionalTaggingTarget(region, target["resources"], target["tags"]))
+
+    return resp
+
+
+def _run_unset_cmd(config: Config, resources: List[AWSResource], console: output.Console) -> List[TaggingResponse]:
+    tagger = Tagger(config.partition, config.credential, action="unset")
+
+    if len(config.resources) == 0:
+        resources_with_filtered_tags = filter_tags(resources, config.tags)
+        if len(resources_with_filtered_tags) == 0:
+            return []
+
+        g_resources = _group_untag_resources(resources_with_filtered_tags)
+
+        TaggingThread.add(g_resources)
+    else:
+        g_tags = config.tags
+
+        for c_resource in config.resources:
+            if isinstance(c_resource, str):
+                targets = []
+
+                for resource in resources:
+                    if resource.category == c_resource and not is_arn(c_resource):
+                        targets.append(resource)
+                    elif is_arn(c_resource) and is_arn_wild_match(resource.arn, c_resource):
+                        targets.append(resource)
+
+                if len(targets) > 0:
+                    resources_with_filtered_tags = filter_tags(resources, g_tags)
+
+                    if len(resources_with_filtered_tags) > 0:
+                        g_resources = _group_untag_resources(resources_with_filtered_tags)
+                        TaggingThread.add(g_resources)
+            else:
+                targets = []
+
+                for resource in resources:
+                    if is_arn(c_resource.target) and is_arn_wild_match(resource.arn, c_resource.target):
+                        targets.append(resource)
+                    elif resource.category == c_resource.target and not is_arn(c_resource.target):
+                        targets.append(resource)
+
+                if len(targets) > 0:
+                    tags = g_tags + c_resource.tags
+
+                    resources_with_filtered_tags = filter_tags(resources, tags)
+
+                    if len(resources_with_filtered_tags) > 0:
+                        g_resources = _group_untag_resources(resources_with_filtered_tags)
+                        TaggingThread.add(g_resources)
 
     return TaggingThread.execute(tagger, console)
 
@@ -209,12 +285,16 @@ def run(config: Config):
 
         console.print(table)
 
-    if config.action.lower() == "set":
+    if config.action.lower() in ["set", "unset"]:
         categories = {}
 
-        logger.info(f"Tags set executed summary:")
+        logger.info(f"Tags {config.action.lower()} executed summary:")
 
-        summaries = _run_set_cmd(config, resource, console)
+        if config.action.lower() == "set":
+            summaries = _run_set_cmd(config, resource, console)
+        else:
+            summaries = _run_unset_cmd(config, resource, console)
+
         table = console.new_table(title="Tags Set Summary")
         table.add_column("ARN", width=80)
         table.add_column("Status", width=10)

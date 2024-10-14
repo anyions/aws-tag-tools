@@ -177,28 +177,48 @@ def cmd_set(
 
 
 @cmd.command("unset", help="Unset tag(s) from resources")
-@click.option(
-    "--key",
-    help="Tag to unset if key is equals, use ',' to join multi keys",
-)
-@click.option(
-    "--value",
-    "value",
-    help="""
-    Tag to unset if value is equals, when use ',' to join multi tags has any one of the specified values will be unset
-    """,
-)
-@click.option(
-    "--tag",
-    "tag",
-    help="Tag to unset in KEY=VALUE format, only unset when both key and value are matched, use ',' to join multi",
-)  # noqa: E501
-@click.option("-r", "--region", "region", help="The AWS Region to use for tagging resources, use ',' to join multi")
-def cmd_unset(key: Optional[str], value: Optional[str], tag: Optional[str]):
-    if key is None and tag is None:
-        click.echo("Error: must set [KEY] or [VALUE] to list resources, see the usage of LIST command.")
+@cmd_common_options
+@click.option("--tag", required=True, help="tag to unset", metavar="KEY1[,KEY2,...]")
+@click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
+@click.option("--filters", "filters", help="JMESPath expression to filter resources")
+@click.option("--force", is_flag=True, default=False, help="Force overwrite if tag exists")
+def cmd_unset(
+    tag: str,
+    resource: Optional[str],
+    region: Optional[str],
+    partition: Optional[str],
+    filters: Optional[str],
+    force: Optional[bool],
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    save_log: Optional[bool],
+    log_level: Optional[str],
+):
+    if len(tag) < 1:
+        click.echo("Error: must set at least one tag, see the usage of UNSET command.")
         click.echo(click.get_current_context().get_help())
         return
+
+    init_logger(log_level, save_log)
+
+    inputs = {
+        "action": "unset",
+        "partition": partition,
+        "regions": region.split(",") if region else [],
+        "filter": filters,
+        "tags": tag.split(","),
+        "resources": resource.split(",") if resource else [],
+        "force": force,
+        "credential": {
+            "access_key": access_key,
+            "secret_key": secret_key,
+            "profile": profile,
+        },
+    }
+
+    config = init_config(inputs)
+    executor.run(config)
 
 
 @cmd.command("list", help="List resources by tag(s) or spec condition(s)")

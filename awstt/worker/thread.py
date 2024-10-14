@@ -6,7 +6,12 @@ from typing import List
 from awstt import output
 from awstt.worker.scanner import Scanner
 from awstt.worker.tagger import Tagger
-from awstt.worker.types import AWSResource, RegionalTaggingTarget, ResourceFilter, TaggingResponse
+from awstt.worker.types import (
+    AWSResource,
+    RegionalTaggingTarget,
+    ResourceFilter,
+    TaggingResponse,
+)
 
 
 logger = logging.getLogger(__name__)

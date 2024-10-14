@@ -1,7 +1,7 @@
 import re
 from datetime import date, datetime, time, timedelta
 from json import JSONDecoder, JSONEncoder
-from typing import List
+from typing import List, Tuple
 
 import jmespath
 from dateutil import parser
@@ -42,12 +42,12 @@ def is_arn_wild_match(pattern: str, inputs: str) -> (bool, bool):
     other = parse_arn(inputs)
 
     matched = (
-        self.partition == other.partition
-        and self.service == other.service
-        and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
-        and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
-        and self.resource_type == other.resource_type
-        and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
+            self.partition == other.partition
+            and self.service == other.service
+            and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
+            and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
+            and self.resource_type == other.resource_type
+            and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
     )
 
     wild = self.region in ["*", ""] or self.account_id in ["*", ""] or self.resource in ["*", ""]
@@ -107,6 +107,40 @@ def filter_resources(resources: List[AWSResource], filters: List[ResourceFilter]
                 matched_list.append(res)
 
     return matched_list
+
+
+def filter_tags(resources: List[AWSResource], filters: List[str]) -> List[Tuple[AWSResource, List[str]]]:
+    if len(filters) == 0:
+        return []
+
+    resources_with_filtered_tags = []
+
+    for resource in resources:
+        tags: List[str] = []
+
+        for f in filters:
+            if f == "*":
+                tags.extend([t.key for t in resource.tags])
+                continue
+
+            ts = jmespath.search(f, resource.dict())
+
+            if ts is None:
+                continue
+            elif isinstance(ts, list) and len(ts) > 0:
+                if isinstance(ts[0], str):
+                    tags.extend(ts)
+                elif isinstance(ts[0], dict) and ts[0].get("key", None) is not None:
+                    tags.extend([t["key"] for t in ts])
+            elif isinstance(ts, dict) and ts.get("key", None) is not None:
+                tags.append(ts["key"])
+            elif isinstance(ts, str):
+                tags.append(ts)
+
+        if len(tags) > 0:
+            resources_with_filtered_tags.append((resource, tags))
+
+    return resources_with_filtered_tags
 
 
 def detect_region(region_name: str, partition: str) -> str:

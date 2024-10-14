@@ -34,7 +34,7 @@ class Config:
     filter: Optional[str] = None
     partition: Optional[str] = "aws"
     regions: Optional[List[str]] = field(default_factory=list)
-    tags: List[Tag] = field(default_factory=list)
+    tags: List[Union[Tag, str]] = field(default_factory=list)
     resources: List[Union[str, Resource]] = field(default_factory=list)
     credential: Optional[Credential] = field(default_factory=Credential)
 
@@ -73,3 +73,12 @@ def check_config(config: Config):
         for res in [r for r in config.resources if isinstance(r, Resource)]:
             if any(x for x in res.tags if not isinstance(x, Tag)):
                 raise ConfigError(f"Resource Tags should be a list of Tag - {res}")
+
+    if config.action == "unset":
+        if any(x for x in config.tags if isinstance(x, Tag)):
+            raise ConfigError(f"Tags should be a list of key str or key selector in JMESPath expression")
+        for res in [r for r in config.resources if isinstance(r, Resource)]:
+            if any(x for x in res.tags if isinstance(x, Tag)):
+                raise ConfigError(
+                    f"Resource Tags should be a list of key str or key selector in JMESPath expression - {res}"
+                )
