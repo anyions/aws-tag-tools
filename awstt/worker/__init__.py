@@ -11,6 +11,13 @@ from awstt.worker.scanners.ec2_ebs import EBSScanner
 from awstt.worker.scanners.ec2_eip import EIPScanner
 from awstt.worker.scanners.ec2_instance import EC2Scanner
 from awstt.worker.scanners.ec2_internet_gateway import InternetGatewayScanner
+from awstt.worker.scanners.ec2_nat_gateway import NATGatewayScanner
+from awstt.worker.scanners.ec2_network_acl import NetworkACLScanner
+from awstt.worker.scanners.ec2_routetable import RouteTableScanner
+from awstt.worker.scanners.ec2_securitygroup import SecurityGroupScanner
+from awstt.worker.scanners.ec2_snapshot import SnapshotScanner
+from awstt.worker.scanners.ec2_vpc_peering import VPCPeeringScanner
+from awstt.worker.scanners.ec2_vpn_gateway import VPNGatewayScanner
 from awstt.worker.scanners.efs import EFSScanner
 from awstt.worker.scanners.elasticache_cluster import ElastiCacheClusterScanner
 from awstt.worker.scanners.elasticache_snapshot import ElastiCacheSnapshotScanner
@@ -22,3 +29,9 @@ from awstt.worker.scanners.iam_policy import IAMPolicyScanner
 from awstt.worker.scanners.iam_role import IAMRoleScanner
 from awstt.worker.scanners.iam_user import IAMUserScanner
 from awstt.worker.scanners.kms import KMSScanner
+from awstt.worker.scanners.lambda_function import LambdaFunctionScanner
+from awstt.worker.scanners.lightsail_instance import LightsailScanner
+from awstt.worker.scanners.opensearch import OpenSearchScanner
+from awstt.worker.scanners.rds_cluster import RDSClusterScanner
+from awstt.worker.scanners.rds_instance import RDSInstanceScanner
+from awstt.worker.scanners.s3_bucket import S3BucketScanner
