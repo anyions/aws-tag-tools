@@ -11,7 +11,7 @@ from awstt.worker.types import AWSResource, RegionalTaggingTarget, ResourceSelec
 
 logger = logging.getLogger(__name__)
 
-SCANNING_THREAD_LIMIT = 5
+SCANNING_THREAD_LIMIT = 10
 RATE_LIMIT_EXCEEDED = "Rate exceeded"
 
 
@@ -114,18 +114,46 @@ class TaggingThread:
                                 rate_exceeded_targets.append((target.region, res, target.tags))
 
         # TODO use batch
-        while True:
+        while 1:
             if len(rate_exceeded_targets) == 0:
                 break
 
-            targets = rate_exceeded_targets[:]
-            for item in targets:
-                resp = tagger.execute_one(item[0], item[1], item[2])
-                if resp.hint != RATE_LIMIT_EXCEEDED:
-                    responses.append(resp)
-                    rate_exceeded_targets.remove(item)
+            targets_map = {}
+            for item in rate_exceeded_targets:
+                region, res, tags = item[0], item[1], item[2]
+                tag_str = ",".join([f"{t.key}={t.value}" for t in tags])
 
+                if region not in targets_map:
+                    targets_map[region] = {}
+                region_map = targets_map[region]
+                if tag_str not in region_map:
+                    region_map[tag_str] = {"tags": tags, "resources": []}
+                region_map[tag_str]["resources"].append(res)
+
+            regional_targets: List[RegionalTaggingTarget] = []
+            for region, targets in targets_map.items():
+                for _, tag_group in targets.items():
+                    regional_targets.append(RegionalTaggingTarget(region, tag_group["resources"], tag_group["tags"]))
+
+            resp = tagger.execute(regional_targets)
+            for r in resp:
+                if r.hint != RATE_LIMIT_EXCEEDED:
+                    responses.append(r)
+                    for item in rate_exceeded_targets:
+                        if item[1].arn == r.arn:
+                            rate_exceeded_targets.remove(item)
+
+            if len(rate_exceeded_targets) > 0:
                 time.sleep(0.3)  # avoid throttling
+
+        # targets = rate_exceeded_targets[:]
+        # for item in targets:
+        #     resp = tagger.execute_one(item[0], item[1], item[2])
+        #     if resp.hint != RATE_LIMIT_EXCEEDED:
+        #         responses.append(resp)
+        #         rate_exceeded_targets.remove(item)
+        #
+        #     time.sleep(0.3)  # avoid throttling
 
         progress.stop()
         logger.debug(f"Finished batch resources tagging")
