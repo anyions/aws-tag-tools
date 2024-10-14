@@ -175,14 +175,14 @@ class Registrable:
             raise RegistrationError(f"{name} is not a registered name for {cls.__name__}.")
 
     @classmethod
-    def list_available(cls: Type[T], sorted: bool = True) -> List[str]:
+    def list_available(cls: Type[T], in_order: bool = True) -> List[str]:
         """
         List all registered subclasses.
 
         If ``cls.default_implementation`` is specified, it will be first in the list.
         """
         keys = list(Registrable._registry[cls].keys())
-        if sorted:
+        if in_order:
             keys.sort()
 
         default = cls.default_implementation  # type: ignore
