@@ -4,7 +4,7 @@ from typing import Dict, List
 from awstt import output
 from awstt.config import Config, ConfigError, Tag, check_config
 from awstt.worker.thread import Scanner, ScanningThread, Tagger, TaggingThread
-from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, ResourceSelector, TaggingResponse
+from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, ResourceFilter, TaggingResponse
 from awstt.worker.utils import is_arn, is_arn_wild_match, parse_arn
 
 
@@ -18,12 +18,11 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
         if len(config.resources) == 0:
             ScanningThread.add(
                 scanner,
-                [
-                    ResourceSelector(
-                        arn_pattern=scanner.arn_pattern,
-                        conditions=[config.selector] if config.selector else [],
-                    )
-                ],
+                (
+                    [ResourceFilter(arn_pattern=scanner.arn_pattern, conditions=[config.filter])]
+                    if config.filter
+                    else []
+                ),
             )
         else:
             selectors = []
@@ -36,19 +35,19 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
 
                 if (is_arn(target) and scanner.is_supported_arn(target)) or (name.lower() == target.lower()):
                     if not isinstance(res, str):
-                        conditions = [s for s in [config.selector, res.selector] if s is not None]
+                        conditions = [s for s in [config.filter, res.selector] if s is not None]
 
                         selectors.append(
-                            ResourceSelector(
+                            ResourceFilter(
                                 arn_pattern=target if is_arn(target) else scanner.arn_pattern,
                                 conditions=conditions,
                             )
                         )
                     else:
                         selectors.append(
-                            ResourceSelector(
+                            ResourceFilter(
                                 arn_pattern=target,
-                                conditions=[config.selector] if config.selector else [],
+                                conditions=[config.filter] if config.filter else [],
                             )
                         )
 

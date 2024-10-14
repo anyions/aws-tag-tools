@@ -6,7 +6,7 @@ from typing import List
 from awstt import output
 from awstt.worker.scanner import Scanner
 from awstt.worker.tagger import Tagger
-from awstt.worker.types import AWSResource, RegionalTaggingTarget, ResourceSelector, TaggingResponse
+from awstt.worker.types import AWSResource, RegionalTaggingTarget, ResourceFilter, TaggingResponse
 
 
 logger = logging.getLogger(__name__)
@@ -19,14 +19,14 @@ class ScanningThread:
     _workers: List["ScanningThread.Worker"] = []
 
     class Worker:
-        def __init__(self, scanner: Scanner, selectors: List[ResourceSelector]):
+        def __init__(self, scanner: Scanner, filters: List[ResourceFilter]):
             self.scanner = scanner
-            self.selectors = selectors
+            self.filters = filters
 
         def execute(self) -> List[AWSResource]:
             resources = []
             try:
-                resources = self.scanner.execute(selectors=self.selectors)
+                resources = self.scanner.execute(filters=self.filters)
             except KeyboardInterrupt:
                 logger.warning(f"Scanning process terminated - {self.scanner.category}")
             except Exception as e:
@@ -35,8 +35,8 @@ class ScanningThread:
                 return resources
 
     @classmethod
-    def add(cls, scanner: Scanner, selectors: list[ResourceSelector]):
-        cls._workers.append(ScanningThread.Worker(scanner, selectors))
+    def add(cls, scanner: Scanner, filters: list[ResourceFilter]):
+        cls._workers.append(ScanningThread.Worker(scanner, filters))
 
     @classmethod
     def execute(cls, console: output.Console) -> List[AWSResource]:

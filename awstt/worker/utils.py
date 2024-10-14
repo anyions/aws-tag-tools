@@ -6,7 +6,7 @@ from typing import List
 import jmespath
 from dateutil import parser
 
-from awstt.worker.types import ArnInfo, AWSResource, ResourceSelector
+from awstt.worker.types import ArnInfo, AWSResource, ResourceFilter
 
 
 class DateTimeEncoder(JSONEncoder):
@@ -76,7 +76,7 @@ def parse_arn(inputs: str) -> ArnInfo:
     )
 
 
-def filter_resources(resources: List[AWSResource], filters: List[ResourceSelector]) -> List[AWSResource]:
+def filter_resources(resources: List[AWSResource], filters: List[ResourceFilter]) -> List[AWSResource]:
     if len(filters) == 0:
         return resources
 

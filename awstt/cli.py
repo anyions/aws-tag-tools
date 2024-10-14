@@ -125,14 +125,14 @@ def cmd():
 @cmd_common_options
 @click.option("--tag", required=True, help="Tag to set", metavar="KEY=VALUE[,KEY=VALUE,...]")
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
-@click.option("--selector", help="JMESPath expression to select resources")
+@click.option("--filters", "filters", help="JMESPath expression to filter resources")
 @click.option("--force", is_flag=True, default=False, help="Force overwrite if tag exists")
 def cmd_set(
     tag: str,
     resource: Optional[str],
     region: Optional[str],
     partition: Optional[str],
-    selector: Optional[str],
+    filters: Optional[str],
     force: Optional[bool],
     access_key: Optional[str],
     secret_key: Optional[str],
@@ -161,7 +161,7 @@ def cmd_set(
         "action": "set",
         "partition": partition,
         "regions": region.split(",") if region else [],
-        "selector": selector,
+        "filter": filters,
         "tags": tags,
         "resources": resource.split(",") if resource else [],
         "force": force,
@@ -204,12 +204,12 @@ def cmd_unset(key: Optional[str], value: Optional[str], tag: Optional[str]):
 @cmd.command("list", help="List resources by tag(s) or spec condition(s)")
 @cmd_common_options
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
-@click.option("--selector", help="JMESPath expression to select resources")
+@click.option("--filter", "filters", help="JMESPath expression to filter resources")
 def cmd_list(
     resource: Optional[str],
     region: Optional[str],
     partition: Optional[str],
-    selector: Optional[str],
+    filters: Optional[str],
     access_key: Optional[str],
     secret_key: Optional[str],
     profile: Optional[str],
@@ -222,7 +222,7 @@ def cmd_list(
         "action": "list",
         "partition": partition,
         "regions": region.split(",") if region else [],
-        "selector": selector,
+        "filter": filters,
         "tags": [],
         "resources": resource.split(",") if resource else [],
         "force": False,

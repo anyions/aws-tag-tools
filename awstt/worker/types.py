@@ -33,7 +33,7 @@ class AWSResource(_BaseType):
 
 
 @dataclass(frozen=True, init=True, repr=True, order=True)
-class ResourceSelector(_BaseType):
+class ResourceFilter(_BaseType):
     arn_pattern: str
     conditions: List[str]
 

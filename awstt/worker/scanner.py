@@ -9,7 +9,7 @@ import boto3
 
 from awstt.config import Credential
 from awstt.worker.registrable import Registrable
-from awstt.worker.types import AWSResource, ResourceSelector
+from awstt.worker.types import AWSResource, ResourceFilter
 from awstt.worker.utils import detect_region, filter_resources, is_arn, parse_arn
 
 
@@ -45,11 +45,11 @@ class Scanner(Registrable, ABC):
         info = parse_arn(arn)
         return info.service == self._service_name and info.resource_type == self._arn_resource_type
 
-    def execute(self, *, selectors: list[ResourceSelector]) -> List[AWSResource]:
+    def execute(self, *, filters: list[ResourceFilter]) -> List[AWSResource]:
         """
         Scan resources with selectors
 
-        :param selectors: The selectors to filter resources
+        :param filters: The selectors to filter resources
         :return: A list ARNs of resources matched selectors
         :rtype: List[AWSResource]
         """
@@ -64,7 +64,7 @@ class Scanner(Registrable, ABC):
                 logger.debug(f"Scanning - {self.category} @ {region}")
                 client = self._create_client(self._session, region=detect_region(region, self._partition))
                 founded = self._list_resources(client)
-                filtered = filter_resources(founded, selectors)
+                filtered = filter_resources(founded, filters)
 
                 resources.extend(filtered)
                 logger.debug(
