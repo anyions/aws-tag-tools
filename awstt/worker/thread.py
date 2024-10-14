@@ -113,7 +113,6 @@ class TaggingThread:
                             if res.arn == r.arn:
                                 rate_exceeded_targets.append((target.region, res, target.tags))
 
-        # TODO use batch
         while 1:
             if len(rate_exceeded_targets) == 0:
                 break
@@ -145,15 +144,6 @@ class TaggingThread:
 
             if len(rate_exceeded_targets) > 0:
                 time.sleep(0.3)  # avoid throttling
-
-        # targets = rate_exceeded_targets[:]
-        # for item in targets:
-        #     resp = tagger.execute_one(item[0], item[1], item[2])
-        #     if resp.hint != RATE_LIMIT_EXCEEDED:
-        #         responses.append(resp)
-        #         rate_exceeded_targets.remove(item)
-        #
-        #     time.sleep(0.3)  # avoid throttling
 
         progress.stop()
         logger.debug(f"Finished batch resources tagging")
