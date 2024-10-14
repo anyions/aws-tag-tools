@@ -17,6 +17,21 @@ click.rich_click.COMMAND_GROUPS = {
     "awstt": [{"name": "Commands", "commands": ["set", "unset", "list", "exec", "info"]}]
 }
 
+common_option_groups = [
+    {
+        "name": "Credential Options",
+        "options": ["--access_key", "--secret_key", "--profile"],
+    },
+    {
+        "name": "Log Options",
+        "options": ["--save-log", "--log-level"],
+    },
+    {
+        "name": "Help",
+        "options": ["--help"],
+    },
+]
+
 click.rich_click.OPTION_GROUPS = {
     "awstt": [
         {
@@ -35,20 +50,16 @@ click.rich_click.OPTION_GROUPS = {
             "name": "Tagging Options",
             "options": ["--tag", "--resource", "--region", "--partition", "--force", "--selector"],
         },
+    ],
+    "awstt list": [
         {
-            "name": "Credential Options",
-            "options": ["--access_key", "--secret_key", "--profile"],
-        },
-        {
-            "name": "Log Options",
-            "options": ["--save-log", "--log-level"],
-        },
-        {
-            "name": "Help",
-            "options": ["--help"],
+            "name": "List Options",
+            "options": ["--resource", "--selector", "--region", "--partition", "--force", "--selector"],
         },
     ],
 }
+click.rich_click.OPTION_GROUPS["awstt set"] += common_option_groups
+click.rich_click.OPTION_GROUPS["awstt list"] += common_option_groups
 
 
 @click.group()
@@ -149,7 +160,7 @@ def cmd_set(
     executor.run(config)
 
 
-@cli.command("unset", help="Unset tag from resources")
+@cli.command("unset", help="Unset tag(s) from resources")
 @click.option(
     "--key",
     help="Tag to unset if key is equals, use ',' to join multi keys",
@@ -174,7 +185,7 @@ def cmd_unset(key: Optional[str], value: Optional[str], tag: Optional[str]):
         return
 
 
-@cli.command("list", help="List resources by tag")
+@cli.command("list", help="List resources by tag(s) or spec condition(s)")
 @cli_common_options
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
 @click.option("--selector", help="JMESPath expression to select resources")
