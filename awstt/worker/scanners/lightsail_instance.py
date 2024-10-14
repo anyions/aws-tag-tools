@@ -4,7 +4,7 @@ from awstt.worker.scanner import Scanner
 from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("Lightsail::Instance")
+@Scanner.register("Lightsail:Instance")
 class LightsailScanner(Scanner):
     def build_resource(self, client: any, instance: dict) -> AWSResource:
         return AWSResource(
@@ -34,4 +34,4 @@ class LightsailScanner(Scanner):
 
     @property
     def category(self) -> str:
-        return "Instance"
+        return "Lightsail:Instance"

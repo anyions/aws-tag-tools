@@ -4,7 +4,7 @@ from awstt.worker.scanner import Scanner
 from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("S3::Bucket")
+@Scanner.register("S3:Bucket")
 class S3BucketScanner(Scanner):
     def build_resource(self, client: any, bucket: dict) -> AWSResource:
         try:

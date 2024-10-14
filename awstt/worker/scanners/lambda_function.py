@@ -4,7 +4,7 @@ from awstt.worker.scanner import Scanner
 from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("Lambda::Function")
+@Scanner.register("Lambda:Function")
 class LambdaFunctionScanner(Scanner):
     def build_resource(self, client: any, func: dict) -> AWSResource:
         resource_tags = client.list_tags(Resource=func["FunctionArn"])
@@ -36,4 +36,4 @@ class LambdaFunctionScanner(Scanner):
 
     @property
     def category(self) -> str:
-        return "Function"
+        return "Lambda:Function"
