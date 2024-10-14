@@ -37,22 +37,20 @@ def is_arn(inputs: str) -> bool:
     return inputs.lower().startswith("arn:")
 
 
-def is_arn_wild_match(pattern: str, inputs: str) -> (bool, bool):
+def is_arn_wild_match(pattern: str, inputs: str) -> bool:
     self = parse_arn(pattern)
     other = parse_arn(inputs)
 
     matched = (
-            self.partition == other.partition
-            and self.service == other.service
-            and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
-            and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
-            and self.resource_type == other.resource_type
-            and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
+        self.partition == other.partition
+        and self.service == other.service
+        and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
+        and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
+        and self.resource_type == other.resource_type
+        and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
     )
 
-    wild = self.region in ["*", ""] or self.account_id in ["*", ""] or self.resource in ["*", ""]
-
-    return matched, wild
+    return matched
 
 
 def parse_arn(inputs: str) -> ArnInfo:
@@ -84,7 +82,10 @@ def filter_resources(resources: List[AWSResource], filters: List[ResourceFilter]
     for res in resources:
         matched = False
         for f in filters:
-            if not is_arn_wild_match(f.arn_pattern, res.arn):
+            if is_arn(f.pattern) and not is_arn_wild_match(f.pattern, res.arn):
+                continue
+
+            if not is_arn(f.pattern) and f.pattern.lower() != res.category.lower():
                 continue
 
             if len(f.conditions) == 0:

@@ -68,7 +68,7 @@ def init_config(data: dict) -> Config:
     data_str = json.dumps(data)
     for exp in re.findall(r'"\${([^}]+)}\$"', data_str):
         exp_value = eval_expression(exp, env)
-        data_str = data_str.replace(f'"${exp}$"', str(exp_value))
+        data_str = data_str.replace(f"${{{exp}}}$", str(exp_value))
 
     data = json.loads(data_str)
 

@@ -18,14 +18,11 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
         if len(config.resources) == 0:
             ScanningThread.add(
                 scanner,
-                (
-                    [ResourceFilter(arn_pattern=scanner.arn_pattern, conditions=[config.filter])]
-                    if config.filter
-                    else []
-                ),
+                ([ResourceFilter(pattern=scanner.arn_pattern, conditions=[config.filter])] if config.filter else []),
             )
         else:
-            selectors = []
+            filters = []
+            need_to_scan = False
 
             for res in config.resources:
                 if isinstance(res, str):
@@ -34,24 +31,27 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
                     target = res.target
 
                 if (is_arn(target) and scanner.is_supported_arn(target)) or (name.lower() == target.lower()):
+                    need_to_scan = True
+
                     if not isinstance(res, str):
                         conditions = [s for s in [config.filter, res.filter] if s is not None]
 
-                        selectors.append(
+                        filters.append(
                             ResourceFilter(
-                                arn_pattern=target if is_arn(target) else scanner.arn_pattern,
+                                pattern=target if is_arn(target) else scanner.arn_pattern,
                                 conditions=conditions,
                             )
                         )
                     else:
-                        selectors.append(
+                        filters.append(
                             ResourceFilter(
-                                arn_pattern=target,
+                                pattern=target,
                                 conditions=[config.filter] if config.filter else [],
                             )
                         )
 
-            ScanningThread.add(scanner, selectors)
+            if need_to_scan:
+                ScanningThread.add(scanner, filters)
 
     return ScanningThread.execute(console)
 
@@ -125,20 +125,21 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
                 targets: List[AWSResource] = []
 
                 for resource in resources:
-                    if resource.category == c_resource and not is_arn(c_resource):
+                    if resource.category.lower() == c_resource.lower() and not is_arn(c_resource):
                         targets.append(resource)
                     elif is_arn(c_resource) and is_arn_wild_match(resource.arn, c_resource):
                         targets.append(resource)
 
                 if len(targets) > 0:
                     g_resources = _group_tag_resources(targets, g_tags, config.force)
-                    TaggingThread.add(g_resources)
+                    if len(g_resources) > 0:
+                        TaggingThread.add(g_resources)
             else:
                 force = c_resource.force or config.force
                 tags: List[Tag] = []
 
                 for tag in g_tags:
-                    c_tag = next(t for t in c_resource.tags if t.key == tag.key)
+                    c_tag = next(filter(lambda x: x.key == tag.key, c_resource.tags), None)
                     if c_tag:
                         tags.append(Tag(key=c_tag.key, value=c_tag.value))
                     else:
@@ -149,12 +150,13 @@ def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.C
                 for resource in resources:
                     if is_arn(c_resource.target) and is_arn_wild_match(resource.arn, c_resource.target):
                         targets.append(resource)
-                    elif resource.category == c_resource.target and not is_arn(c_resource.target):
+                    elif resource.category.lower() == c_resource.target.lower() and not is_arn(c_resource.target):
                         targets.append(resource)
 
                 if len(targets) > 0:
                     g_resources = _group_tag_resources(targets, tags, force)
-                    TaggingThread.add(g_resources)
+                    if len(g_resources) > 0:
+                        TaggingThread.add(g_resources)
 
     return TaggingThread.execute(tagger, console)
 
