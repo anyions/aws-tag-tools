@@ -60,29 +60,29 @@ class FakeConsole:
         pass
 
     def print_json(
-        self,
-        json: Optional[str] = None,
-        *,
-        data: Any = None,
-        indent: Union[None, int, str] = 2,
-        highlight: bool = True,
-        skip_keys: bool = False,
-        ensure_ascii: bool = False,
-        check_circular: bool = True,
-        allow_nan: bool = True,
-        default: Optional[Callable[[Any], Any]] = None,
-        sort_keys: bool = False,
+            self,
+            json: Optional[str] = None,
+            *,
+            data: Any = None,
+            indent: Union[None, int, str] = 2,
+            highlight: bool = True,
+            skip_keys: bool = False,
+            ensure_ascii: bool = False,
+            check_circular: bool = True,
+            allow_nan: bool = True,
+            default: Optional[Callable[[Any], Any]] = None,
+            sort_keys: bool = False,
     ) -> None:
         pass
 
     def pprint(
-        self,
-        objects: Any,
+            self,
+            objects: Any,
     ) -> None:
         pass
 
     # noinspection PyMethodMayBeStatic
-    def new_table(self, title: str):
+    def new_table(self, title: str, **_kwargs):
         return FakeTable(title)
 
     # noinspection PyMethodMayBeStatic
@@ -111,10 +111,11 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
     from rich.progress import SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table as RichTable
 
+
     class Console(RichConsole):
         # noinspection PyMethodMayBeStatic
-        def new_table(self, title: str):
-            return RichTable(title=title)
+        def new_table(self, title: str, **kwargs):
+            return RichTable(title=title, **kwargs)
 
         # noinspection PyMethodMayBeStatic
         def new_progress(self):
@@ -136,8 +137,8 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
             return Pretty(*args, **kwargs)
 
         def pprint(
-            self,
-            objects: Any,
+                self,
+                objects: Any,
         ) -> None:
             pprint(objects, console=self)
 

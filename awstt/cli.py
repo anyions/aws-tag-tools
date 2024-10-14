@@ -17,7 +17,7 @@ click.rich_click.COMMAND_GROUPS = {
     "awstt": [{"name": "Commands", "commands": ["set", "unset", "list", "exec", "info"]}]
 }
 
-common_option_groups = [
+_common_option_groups = [
     {
         "name": "Credential Options",
         "options": ["--access_key", "--secret_key", "--profile"],
@@ -58,8 +58,8 @@ click.rich_click.OPTION_GROUPS = {
         },
     ],
 }
-click.rich_click.OPTION_GROUPS["awstt set"] += common_option_groups
-click.rich_click.OPTION_GROUPS["awstt list"] += common_option_groups
+click.rich_click.OPTION_GROUPS["awstt set"] += _common_option_groups
+click.rich_click.OPTION_GROUPS["awstt list"] += _common_option_groups
 
 
 @click.group()
@@ -70,7 +70,23 @@ def info():
 
 @info.command("resources", short_help="List all supported resources", add_help_option=False)
 def info_resources():
-    click.echo("Supported resources")
+    from awstt.output import console
+    from awstt.worker.scanner import Scanner
+
+    console = console()
+    table = console.new_table(title="", show_header=False, show_edge=False)
+    table.add_column("")
+    for resource in Scanner.list_available():
+        table.add_row(resource)
+
+    console.print(
+        console.new_panel(
+            table,
+            padding=(1, 1),
+            title="[b red]Supported resources",
+            border_style="bright_blue",
+        ),
+    )
 
 
 _cli_option_partition_choices = click.Choice(["aws", "aws-cn", "aws-us-gov"])
@@ -93,20 +109,20 @@ _cli_common_options = [
 ]
 
 
-def cli_common_options(func):
+def cmd_common_options(func):
     for option in reversed(_cli_common_options):
         func = option(func)
     return func
 
 
 @click.group()
-def cli():
+def cmd():
     """AWS-Tag-Tools: The missing tag manager for AWS resources"""
     pass
 
 
-@cli.command("set", help="Set tag(s) to resources")
-@cli_common_options
+@cmd.command("set", help="Set tag(s) to resources")
+@cmd_common_options
 @click.option("--tag", required=True, help="Tag to set", metavar="KEY=VALUE[,KEY=VALUE,...]")
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
 @click.option("--selector", help="JMESPath expression to select resources")
@@ -160,7 +176,7 @@ def cmd_set(
     executor.run(config)
 
 
-@cli.command("unset", help="Unset tag(s) from resources")
+@cmd.command("unset", help="Unset tag(s) from resources")
 @click.option(
     "--key",
     help="Tag to unset if key is equals, use ',' to join multi keys",
@@ -185,8 +201,8 @@ def cmd_unset(key: Optional[str], value: Optional[str], tag: Optional[str]):
         return
 
 
-@cli.command("list", help="List resources by tag(s) or spec condition(s)")
-@cli_common_options
+@cmd.command("list", help="List resources by tag(s) or spec condition(s)")
+@cmd_common_options
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
 @click.option("--selector", help="JMESPath expression to select resources")
 def cmd_list(
@@ -221,7 +237,7 @@ def cmd_list(
     executor.run(config)
 
 
-@cli.command("exec", help="Execute action with config file")
+@cmd.command("exec", help="Execute action with config file")
 @click.option("-c", "--config", "cfg", help="Config file", type=click.Path(exists=True))
 @click.option("--access_key", help="Access key of AWS AK/SK")
 @click.option("--secret_key", help="Secret key of AWS AK/SK")
@@ -255,5 +271,5 @@ def execute(
 
 
 def run():
-    cli.add_command(info)
-    cli(prog_name="awstt", auto_envvar_prefix="AWSTT")
+    cmd.add_command(info)
+    cmd(prog_name="awstt", auto_envvar_prefix="AWSTT")
