@@ -4,7 +4,7 @@ from awstt.worker.scanner import Scanner
 from awstt.worker.types import AWSResource, AWSResourceTag
 
 
-@Scanner.register("CloudFront")
+@Scanner.register("CloudFront:Distribution")
 class CloudFrontScanner(Scanner):
     def __init__(self, partition, _, credential):
         super().__init__(partition, ["global"], credential)

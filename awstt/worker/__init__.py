@@ -1,6 +1,6 @@
 from awstt.worker.scanners.autoscaling import AutoScalingGroupScanner
 from awstt.worker.scanners.cloudformation import CloudFormationScanner
-from awstt.worker.scanners.cloudfront import CloudFrontScanner
+from awstt.worker.scanners.cloudfront_distribution import CloudFrontScanner
 from awstt.worker.scanners.cloudtrail import CloudTrailScanner
 from awstt.worker.scanners.cloudwatch_alarm import CloudWatchAlarmScanner
 from awstt.worker.scanners.cloudwatch_loggroup import CloudWatchLogGroupScanner
