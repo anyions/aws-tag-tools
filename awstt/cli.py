@@ -8,7 +8,6 @@ from awstt import executor
 from awstt.config import init_config
 from awstt.output import init_logger
 
-
 logger = logging.getLogger()
 
 click.rich_click.USE_RICH_MARKUP = False
@@ -48,18 +47,32 @@ click.rich_click.OPTION_GROUPS = {
     "awstt set": [
         {
             "name": "Tagging Options",
-            "options": ["--tag", "--resource", "--region", "--partition", "--force", "--selector"],
+            "options": ["--tag", "--resource", "--region", "--partition", "--force", "--filter"],
+        },
+    ],
+    "awstt unset": [
+        {
+            "name": "UnTagging Options",
+            "options": ["--tag", "--resource", "--region", "--partition", "--filter"],
         },
     ],
     "awstt list": [
         {
             "name": "List Options",
-            "options": ["--resource", "--selector", "--region", "--partition", "--force", "--selector"],
+            "options": ["--resource", "--region", "--partition", "--force", "--filter"],
+        },
+    ],
+    "awstt exec": [
+        {
+            "name": "Execute Options",
+            "options": ["--config", "--filter"],
         },
     ],
 }
-click.rich_click.OPTION_GROUPS["awstt set"] += _common_option_groups
 click.rich_click.OPTION_GROUPS["awstt list"] += _common_option_groups
+click.rich_click.OPTION_GROUPS["awstt set"] += _common_option_groups
+click.rich_click.OPTION_GROUPS["awstt unset"] += _common_option_groups
+click.rich_click.OPTION_GROUPS["awstt exec"] += _common_option_groups
 
 
 @click.group()
@@ -92,8 +105,6 @@ def info_resources():
 _cli_option_partition_choices = click.Choice(["aws", "aws-cn", "aws-us-gov"])
 
 _cli_common_options = [
-    click.option("--region", help="Region of AWS", metavar="REGION1[,REGION2,...]"),
-    click.option("--partition", help="Partition of AWS", type=_cli_option_partition_choices, default="aws"),
     click.option("--access_key", help="Access key of AWS AK/SK"),
     click.option("--secret_key", help="Secret key of AWS AK/SK"),
     click.option("--profile", help="Profile name of AWS CLI Credential"),
@@ -124,21 +135,23 @@ def cmd():
 @cmd.command("set", help="Set tag(s) to resources")
 @cmd_common_options
 @click.option("--tag", required=True, help="Tag to set", metavar="KEY=VALUE[,KEY=VALUE,...]")
+@click.option("--region", help="Region of AWS", metavar="REGION1[,REGION2,...]")
+@click.option("--partition", help="Partition of AWS", type=_cli_option_partition_choices, default="aws")
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
-@click.option("--filters", "filters", help="JMESPath expression to filter resources")
+@click.option("--filter", "filters", help="JMESPath expression to filter resources")
 @click.option("--force", is_flag=True, default=False, help="Force overwrite if tag exists")
 def cmd_set(
-    tag: str,
-    resource: Optional[str],
-    region: Optional[str],
-    partition: Optional[str],
-    filters: Optional[str],
-    force: Optional[bool],
-    access_key: Optional[str],
-    secret_key: Optional[str],
-    profile: Optional[str],
-    save_log: Optional[bool],
-    log_level: Optional[str],
+        tag: str,
+        resource: Optional[str],
+        region: Optional[str],
+        partition: Optional[str],
+        filters: Optional[str],
+        force: Optional[bool],
+        access_key: Optional[str],
+        secret_key: Optional[str],
+        profile: Optional[str],
+        save_log: Optional[bool],
+        log_level: Optional[str],
 ):
     if len(tag) < 1:
         click.echo("Error: must set at least one tag, see the usage of SET command.")
@@ -179,21 +192,21 @@ def cmd_set(
 @cmd.command("unset", help="Unset tag(s) from resources")
 @cmd_common_options
 @click.option("--tag", required=True, help="tag to unset", metavar="KEY1[,KEY2,...]")
+@click.option("--region", help="Region of AWS", metavar="REGION1[,REGION2,...]")
+@click.option("--partition", help="Partition of AWS", type=_cli_option_partition_choices, default="aws")
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
-@click.option("--filters", "filters", help="JMESPath expression to filter resources")
-@click.option("--force", is_flag=True, default=False, help="Force overwrite if tag exists")
+@click.option("--filter", "filters", help="JMESPath expression to filter resources")
 def cmd_unset(
-    tag: str,
-    resource: Optional[str],
-    region: Optional[str],
-    partition: Optional[str],
-    filters: Optional[str],
-    force: Optional[bool],
-    access_key: Optional[str],
-    secret_key: Optional[str],
-    profile: Optional[str],
-    save_log: Optional[bool],
-    log_level: Optional[str],
+        tag: str,
+        resource: Optional[str],
+        region: Optional[str],
+        partition: Optional[str],
+        filters: Optional[str],
+        access_key: Optional[str],
+        secret_key: Optional[str],
+        profile: Optional[str],
+        save_log: Optional[bool],
+        log_level: Optional[str],
 ):
     if len(tag) < 1:
         click.echo("Error: must set at least one tag, see the usage of UNSET command.")
@@ -209,7 +222,6 @@ def cmd_unset(
         "filter": filters,
         "tags": tag.split(","),
         "resources": resource.split(",") if resource else [],
-        "force": force,
         "credential": {
             "access_key": access_key,
             "secret_key": secret_key,
@@ -223,18 +235,20 @@ def cmd_unset(
 
 @cmd.command("list", help="List resources by tag(s) or spec condition(s)")
 @cmd_common_options
+@click.option("--region", help="Region of AWS", metavar="REGION1[,REGION2,...]")
+@click.option("--partition", help="Partition of AWS", type=_cli_option_partition_choices, default="aws")
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
 @click.option("--filter", "filters", help="JMESPath expression to filter resources")
 def cmd_list(
-    resource: Optional[str],
-    region: Optional[str],
-    partition: Optional[str],
-    filters: Optional[str],
-    access_key: Optional[str],
-    secret_key: Optional[str],
-    profile: Optional[str],
-    save_log: Optional[bool],
-    log_level: Optional[str],
+        resource: Optional[str],
+        region: Optional[str],
+        partition: Optional[str],
+        filters: Optional[str],
+        access_key: Optional[str],
+        secret_key: Optional[str],
+        profile: Optional[str],
+        save_log: Optional[bool],
+        log_level: Optional[str],
 ):
     init_logger(log_level, save_log)
 
@@ -258,25 +272,22 @@ def cmd_list(
 
 
 @cmd.command("exec", help="Execute action with config file")
-@click.option("-c", "--config", "cfg", help="Config file", type=click.Path(exists=True))
-@click.option("--access_key", help="Access key of AWS AK/SK")
-@click.option("--secret_key", help="Secret key of AWS AK/SK")
-@click.option("--profile", help="Profile name of AWS CLI Credential")
-@click.option("--save", is_flag=True, default=False, help="Save log to file")
-def execute(
-    cfg: str,
-    access_key: Optional[str],
-    secret_key: Optional[str],
-    profile: Optional[str],
-    save_log: Optional[bool],
-    log_level: Optional[str],
+@cmd_common_options
+@click.option("--config", "cfg", help="Config file", type=click.Path(exists=True))
+def cmd_exec(
+        cfg: str,
+        access_key: Optional[str],
+        secret_key: Optional[str],
+        profile: Optional[str],
+        save_log: Optional[bool],
+        log_level: Optional[str],
 ):
     init_logger(log_level, save_log)
 
     with open(cfg, "r") as f:
         inputs = json.loads(f.read())
 
-        if not inputs["credential"]:
+        if not inputs.get("credential"):
             inputs["credential"] = {}
 
         if access_key:

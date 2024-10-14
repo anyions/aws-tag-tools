@@ -1,9 +1,9 @@
 {
   "action": "set",
-  "partition": "aws-cn",
+  "partition": "aws",
   "regions": [
-    "us-east-1",
-    "us-west-1"
+    "ap-southeast-1",
+    "ap-northeast-1"
   ],
   "tags": [
     {
@@ -22,33 +22,23 @@
       "target": "arn:aws:ec2:*:*:vpc/*",
       "tags": [
         {
-          "key": "tagged_at",
-          "value": "2024-01-01 00:00:00"
-        },
+          "key": "tagged_by",
+          "value": "AnyIons"
+        }
+      ],
+      "force": true
+    },
+    {
+      "target": "arn:aws:ec2:*:*:instance/*",
+      "tags": [
         {
           "key": "owner",
           "value": "AnyIons"
         }
       ],
       "force": true,
-      "selector": "tags[?key == 'others'] == null"
-    },
-    {
-      "target": "arn:aws:ec2:*:*:ebs/*",
-      "tags": [
-        {
-          "key": "owner",
-          "value": "aws-tag-tools"
-        }
-      ],
-      "force": true,
-      "selector": "tags[?key == 'others'] == null"
+      "filter": "tags[?key == 'others']"
     }
   ],
-  "force": false,
-  "credential": {
-    "access_key": "my_access_key",
-    "secret_key": "my_secret_key",
-    "profile": "my_profile"
-  }
+  "force": false
 }

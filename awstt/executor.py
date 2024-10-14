@@ -35,7 +35,7 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
 
                 if (is_arn(target) and scanner.is_supported_arn(target)) or (name.lower() == target.lower()):
                     if not isinstance(res, str):
-                        conditions = [s for s in [config.filter, res.selector] if s is not None]
+                        conditions = [s for s in [config.filter, res.filter] if s is not None]
 
                         selectors.append(
                             ResourceFilter(

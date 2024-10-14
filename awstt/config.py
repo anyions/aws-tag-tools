@@ -1,6 +1,11 @@
+import json
 import logging
+import os
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional, Union
+
+from .evals import eval_expression
 
 
 logger = logging.getLogger(__name__)
@@ -16,8 +21,13 @@ class Tag:
 class Resource:
     target: str
     tags: List[Union[Tag, str]] = field(default_factory=list)
-    selector: Optional[str] = None
+    filter: Optional[str] = None
     force: Optional[bool] = False
+
+    def __post_init__(self):
+        object.__setattr__(
+            self, "tags", [Tag(**tag) if isinstance(tag, dict) else tag for tag in self.tags] if self.tags else []
+        )
 
 
 @dataclass(frozen=True, init=True, repr=True, order=True)
@@ -47,6 +57,21 @@ class ConfigError(Exception):
 
 
 def init_config(data: dict) -> Config:
+    env = os.environ
+    env.pop("AWS_ACCESS_KEY_ID", None)
+    env.pop("AWS_SECRET_ACCESS_KEY", None)
+    env.pop("AWS_SESSION_TOKEN", None)
+    env.pop("AWS_DEFAULT_REGION", None)
+    env.pop("AWS_REGION", None)
+    env.pop("AWS_PROFILE", None)
+
+    data_str = json.dumps(data)
+    for exp in re.findall(r'"\${([^}]+)}\$"', data_str):
+        exp_value = eval_expression(exp, env)
+        data_str = data_str.replace(f'"${exp}$"', str(exp_value))
+
+    data = json.loads(data_str)
+
     data["credential"] = Credential(**data["credential"])
     data["resources"] = (
         [Resource(**res) if isinstance(res, dict) else res for res in data["resources"]] if data["resources"] else []
@@ -72,6 +97,7 @@ def check_config(config: Config):
             raise ConfigError(f"Tags should be a list of Tag")
         for res in [r for r in config.resources if isinstance(r, Resource)]:
             if any(x for x in res.tags if not isinstance(x, Tag)):
+                print([type(x) for x in res.tags if not isinstance(x, Tag)])
                 raise ConfigError(f"Resource Tags should be a list of Tag - {res}")
 
     if config.action == "unset":
