@@ -16,7 +16,7 @@
     }
   ],
   "resources": [
-    "ec2:instance",
+    "ec2:ebs",
     "arn:aws:rds:*:*:db:mysql-instance",
     {
       "target": "arn:aws:ec2:*:*:vpc/*",
@@ -25,8 +25,7 @@
           "key": "tagged_by",
           "value": "AnyIons"
         }
-      ],
-      "force": true
+      ]
     },
     {
       "target": "arn:aws:ec2:*:*:instance/*",
@@ -37,7 +36,7 @@
         }
       ],
       "force": true,
-      "filter": "tags[?key == 'others']"
+      "filter": "!(tags[?key == 'others'])"
     }
   ],
   "force": false
