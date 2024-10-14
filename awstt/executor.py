@@ -170,16 +170,16 @@ def run(config: Config):
     if config.credential and config.credential.secret_key is not None:
         echo_config["credential"]["secret_key"] = "******"
 
+    console.print(
+        console.new_panel(
+            console.new_pretty(echo_config),
+            padding=(1, 1),
+            title="[b red]Running with config",
+            border_style="bright_blue",
+        ),
+    )
+
     logger.info(f"Running with config: \n{echo_config}")
-    if logger.getEffectiveLevel() >= logging.INFO:
-        console.print(
-            console.new_panel(
-                console.new_pretty(echo_config),
-                padding=(1, 1),
-                title="[b red]Running with config",
-                border_style="bright_blue",
-            ),
-        )
 
     try:
         check_config(config)
