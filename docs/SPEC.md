@@ -1,0 +1,3 @@
+# Spec of Resources
+
+TODO
