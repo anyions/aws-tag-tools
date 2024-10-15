@@ -9,6 +9,7 @@ from awstt.config import Credential
 from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, TaggingResponse
 from awstt.worker.utils import detect_region
 
+
 logger = logging.getLogger(__name__)
 
 RESOURCES_PER_REQUEST = 20  # The max limited to tag resources per request
@@ -149,8 +150,9 @@ class Tagger(object):
                             status = "Overwrite"
                             hint = ", ".join(overwrites)
                     elif self._action == "unset":
-                        # TODO log unsetted tags
-                        pass
+                        original_tag = [t for t in item.tags if t.key in target.tags]
+                        if len(original_tag) > 0:
+                            hint = ", ".join([f"{t.key}: {t.value} --> <unset>" for t in original_tag])
 
                     item_resp = TaggingResponse(
                         category=item.category,
