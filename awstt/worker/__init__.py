@@ -1,4 +1,3 @@
-from awstt.worker.scanners.autoscaling import AutoScalingGroupScanner
 from awstt.worker.scanners.cloudformation import CloudFormationScanner
 from awstt.worker.scanners.cloudfront_distribution import CloudFrontScanner
 from awstt.worker.scanners.cloudtrail import CloudTrailScanner
@@ -7,6 +6,7 @@ from awstt.worker.scanners.cloudwatch_loggroup import CloudWatchLogGroupScanner
 from awstt.worker.scanners.cloudwatch_rules import CloudWatchRulesScanner
 from awstt.worker.scanners.dynamodb_table import DynamoDBScanner
 from awstt.worker.scanners.ec2_ami import AMIScanner
+from awstt.worker.scanners.ec2_autoscaling import AutoScalingGroupScanner
 from awstt.worker.scanners.ec2_ebs import EBSScanner
 from awstt.worker.scanners.ec2_eip import EIPScanner
 from awstt.worker.scanners.ec2_instance import EC2Scanner
@@ -16,6 +16,7 @@ from awstt.worker.scanners.ec2_network_acl import NetworkACLScanner
 from awstt.worker.scanners.ec2_routetable import RouteTableScanner
 from awstt.worker.scanners.ec2_securitygroup import SecurityGroupScanner
 from awstt.worker.scanners.ec2_snapshot import SnapshotScanner
+from awstt.worker.scanners.ec2_vpc import VPCScanner
 from awstt.worker.scanners.ec2_vpc_peering import VPCPeeringScanner
 from awstt.worker.scanners.ec2_vpn_gateway import VPNGatewayScanner
 from awstt.worker.scanners.efs import EFSScanner
