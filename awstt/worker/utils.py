@@ -124,6 +124,9 @@ def filter_tags(resources: List[AWSResource], filters: List[str]) -> List[Tuple[
                 tags.extend([t.key for t in resource.tags])
                 continue
 
+            if not f.lower().startswith("tags["):
+                f = f"tags[?key=='{f}']"
+
             ts = jmespath.search(f, resource.dict())
 
             if ts is None:
