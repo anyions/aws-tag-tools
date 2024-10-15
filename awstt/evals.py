@@ -1,7 +1,6 @@
 import datetime
 import logging
 import math
-import time
 
 
 # add any needed builtins back in
@@ -10,8 +9,6 @@ _safe_list["abs"] = abs
 _safe_list["int"] = int
 _safe_list["str"] = str
 _safe_list["float"] = float
-_safe_list["datetime"] = datetime
-_safe_list["time"] = time
 _safe_list["math"] = math
 _safe_list["now"] = datetime.datetime.now
 _safe_list["date"] = datetime.datetime.date
