@@ -6,6 +6,8 @@
 ![PyPI - License](https://img.shields.io/pypi/l/aws-tag-tools?color=&style=for-the-badge)
 ![Static Badge](https://img.shields.io/badge/author-AnyIons-violet?&style=for-the-badge)
 
+<img src="./docs/screenshots/app.png" alt="awstt" />
+
 [English](README.md) | 简体中文
 </div>
 <br />
@@ -19,10 +21,10 @@ AWS Tag Tools 是一个功能强大且通用的工具,旨在管理各种 AWS
 ## 特性
 
 - 支持在命令行界面或作为 AWS Lambda 函数使用。
-- 支持多种 AWS 服务，请参阅支持的[服务列表](docs/Supported-Services.md)获取详细列表。
+- 支持多种 AWS 服务，请参阅支持的[服务列表](docs/Supported-Services_zh_CN.md)获取详细列表。
 - 支持 AWS 分区：'aws'、'aws-gov' 和 'aws-cn'。
-- 使用 [JMESPath](https://jmespath.org/) 表达式选择或过滤资源，请参阅[使用选择器](docs/Use-Selector.md)。
-- 支持为键或值使用 Python 表达式，请参阅使用[参数表达式](docs/Use-Expression.md)。
+- 使用 [JMESPath](https://jmespath.org/) 表达式选择或过滤资源，请参阅[使用选择器](docs/Use-Selector_zh_CN.md)。
+- 支持为键或值使用 Python 表达式，请参阅使用[参数表达式](docs/Use-Expression_zh_CN.md)。
 - 如果键已存在则忽略标签，强制覆盖时将记录原始值。
 - 取消设置标签时记录原始键/值。
 - 按需将执行过程输出到日志文件。
