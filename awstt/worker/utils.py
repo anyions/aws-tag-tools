@@ -42,12 +42,12 @@ def is_arn_wild_match(pattern: str, inputs: str) -> bool:
     other = parse_arn(inputs)
 
     matched = (
-        self.partition == other.partition
-        and self.service == other.service
-        and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
-        and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
-        and self.resource_type == other.resource_type
-        and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
+            self.partition == other.partition
+            and self.service == other.service
+            and (self.region == other.region or self.region in ["*", ""] or other.region in ["*", ""])
+            and (self.account_id == other.account_id or self.account_id in ["*", ""] or other.account_id in ["*", ""])
+            and self.resource_type == other.resource_type
+            and (self.resource == other.resource or self.resource in ["*", ""] or other.resource in ["*", ""])
     )
 
     return matched
@@ -134,8 +134,8 @@ def filter_tags(resources: List[AWSResource], filters: List[str]) -> List[Tuple[
             elif isinstance(ts, list) and len(ts) > 0:
                 if isinstance(ts[0], str):
                     tags.extend(ts)
-                elif isinstance(ts[0], dict) and ts[0].get("key", None) is not None:
-                    tags.extend([t["key"] for t in ts])
+                elif isinstance(ts[0], dict) is not None:
+                    tags.extend([t["key"] for t in ts if t.get("Key", None) is not None])
             elif isinstance(ts, dict) and ts.get("key", None) is not None:
                 tags.append(ts["key"])
             elif isinstance(ts, str):
