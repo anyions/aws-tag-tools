@@ -7,6 +7,7 @@ from awstt.worker.types import AWSResource, AWSResourceTag
 @Scanner.register("S3:Bucket")
 class S3BucketScanner(Scanner):
     def build_resource(self, client: any, bucket: dict) -> AWSResource:
+        # noinspection PyBroadException
         try:
             resource_tags = client.get_bucket_tagging(Bucket=bucket["Name"])
         except:  # noqa: E722
@@ -30,8 +31,8 @@ class S3BucketScanner(Scanner):
 
         return resources
 
-    def _build_arn(self, client: any, arn_or_id: str) -> str:
-        return f"arn:aws:s3:::{arn_or_id}"
+    def _build_arn(self, client: any, bucket_name: str) -> str:
+        return f"arn:aws:s3:::{bucket_name}"
 
     @property
     def _service_name(self) -> str:
