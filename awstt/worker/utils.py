@@ -145,7 +145,10 @@ def filter_tags(resources: List[AWSResource], filters: List[str]) -> List[Tuple[
 
 
 def detect_region(region_name: str, partition: str) -> str:
-    if (region_name == "" or "global" in region_name) and partition == "aws":
-        return "us-east-1"
+    if region_name == "" or "global" in region_name:
+        if partition == "aws":
+            return "us-east-1"
+        if partition == "aws-gov":
+            return "us-gov"
 
     return region_name
