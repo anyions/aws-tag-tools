@@ -33,9 +33,6 @@ class Scanner(Registrable, ABC):
             profile_name=credential.profile,
         )
 
-        if len(regions) == 0:
-            regions = session.get_available_regions(self._service_name, partition_name=partition)
-
         self._session = session
         self._partition = partition
         self._available_regions = regions
@@ -57,6 +54,12 @@ class Scanner(Registrable, ABC):
 
         # init account_id only when executing, make faster
         self._account_id = self._session.client("sts").get_caller_identity()["Account"]
+
+        # init regions only when executing, make faster
+        if len(self._available_regions) == 0:
+            self._available_regions = self._session.get_available_regions(
+                self._service_name, partition_name=self._partition
+            )
 
         resources: List[AWSResource] = []
         for region in self._available_regions:
