@@ -7,7 +7,10 @@ from awstt.worker.types import AWSResource, AWSResourceTag
 @Scanner.register("CloudFront:Distribution")
 class CloudFrontScanner(Scanner):
     def __init__(self, partition, _, credential):
-        super().__init__(partition, ["global"], credential)
+        if partition in ["aws", "aws-gov"]:
+            super().__init__(partition, ["global"], credential)
+        else:
+            super().__init__(partition, ["cn-northwest-1", "cn-northeast-1"], credential)
 
     def build_resource(self, client: any, dist: dict) -> AWSResource:
         arn = dist["ARN"]
