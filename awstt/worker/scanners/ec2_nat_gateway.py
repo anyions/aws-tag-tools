@@ -30,7 +30,7 @@ class NATGatewayScanner(Scanner):
 
     @property
     def _arn_resource_type(self) -> str:
-        return "natgateway"
+        return "nat-gateway"
 
     @property
     def category(self) -> str:

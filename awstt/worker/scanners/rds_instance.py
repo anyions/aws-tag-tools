@@ -30,7 +30,7 @@ class RDSInstanceScanner(Scanner):
 
     @property
     def _arn_resource_type(self) -> str:
-        return "describe_db_instances"
+        return "db"
 
     @property
     def category(self) -> str:
