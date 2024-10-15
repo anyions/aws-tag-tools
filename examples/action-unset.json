@@ -1,11 +1,11 @@
 {
-  "action": "set",
-  "partition": "aws-cn",
+  "action": "unset",
+  "partition": "aws",
   "regions": [
-    "us-east-1",
-    "us-west-1"
+    "ap-southeast-1",
+    "ap-northeast-1"
   ],
-  "tag": [
+  "tags": [
     "owner",
     "tags[?value == 'awstt'].key"
   ],
@@ -15,23 +15,16 @@
     {
       "target": "arn:aws:ec2:*:*:vpc/*",
       "tags": [
-        "tagged_at",
-        "owner"
+        "tagged_at"
       ],
-      "selector": "tags[?key == 'others'] == null"
+      "filter": "tags[?key == 'others']"
     },
     {
-      "target": "arn:aws:ec2:*:*:ebs/*",
+      "target": "arn:aws:ec2:*:*:volume/*",
       "tags": [
         "tags[?key=='owner' && value == 'aws-tag-tools'].key"
       ],
-      "selector": "tags[?key == 'others'] == null"
+      "filter": "tags[?key == 'tagged_at' && value < '${now().strftime('%Y-%m-%d %H:%M:%S')}$']"
     }
-  ],
-  "force": false,
-  "credential": {
-    "access_key": "my_access_key",
-    "secret_key": "my_secret_key",
-    "profile": "my_profile"
-  }
+  ]
 }

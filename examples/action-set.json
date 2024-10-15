@@ -12,8 +12,11 @@
     },
     {
       "key": "tagged_at",
-      "value": "${datetime.now().strftime('%Y-%m-%d %H:%M:%S')}$"
+      "value": "${now().strftime('%Y-%m-%d %H:%M:%S')}$"
     }
+  ],
+  "cost-allocation-tags": [
+    "tagged_by"
   ],
   "resources": [
     "ec2:ebs",
