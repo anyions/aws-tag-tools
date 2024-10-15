@@ -78,9 +78,9 @@ class TaggingThread:
             try:
                 responses = tagger.execute(self.targets)
             except KeyboardInterrupt:
-                logger.warning(f"Resources tagging process terminated, targets - {t_dict}")
+                logger.warning(f"Tags set/unset process terminated, targets - {t_dict}")
             except Exception as e:
-                logger.error(f"Resources tagging process failed, targets - {t_dict}, exception - {e}")
+                logger.error(f"Tags set/unset process failed, targets - {t_dict}, exception - {e}")
             finally:
                 return responses
 
