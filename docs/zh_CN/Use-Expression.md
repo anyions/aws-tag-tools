@@ -1,7 +1,12 @@
 # 使用计算式
 
-AWS Tag Tools 支持使用 Python 简单表达式的计算结果作为标签的键/值。 考虑到使用 Python `eval` 方法存在安全风险，因此在表达式中仅支持使用以下
-Python 方法:
+AWS Tag Tools 支持使用 Python 简单表达式的计算结果作为标签的键/值。计算式格式为：
+
+```text
+${in-line-python-expression}$
+```
+
+考虑到使用 Python `eval` 方法存在安全风险，因此在表达式中仅支持使用以下 Python 方法:
 
 - `abs()`
 - `int()`

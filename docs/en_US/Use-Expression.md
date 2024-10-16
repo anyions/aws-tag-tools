@@ -1,7 +1,14 @@
 # Use Expression
 
-AWS Tag Tools supports using the computed result of a Python simple expression as the key/value of a tag. Considering
-the security risks of using the Python `eval` method, only the following Python methods are supported in the expression:
+AWS Tag Tools supports using the computed result of a Python simple expression as the key/value of a tag. The expression
+format is:
+
+```text
+${in-line-python-expression}$
+```
+
+Considering the security risks of using the Python `eval` method, only the following Python methods are supported in the
+expression:
 
 - `abs()`
 - `int()`
