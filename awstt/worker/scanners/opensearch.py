@@ -25,7 +25,7 @@ class OpenSearchScanner(Scanner):
         if len(domains) == 0:
             return []
 
-        paginator = [client.describe_elasticsearch_domains(DomainNames=[d.get("DomainName") for d in domains])]
+        paginator = [client.describe_domains(DomainNames=[d.get("DomainName") for d in domains])]
 
         for page in paginator:
             for domain in page.get("DomainStatusList", []):
