@@ -1,5 +1,5 @@
 <div align="center">
-# AWS Tag Tools: AWS 资源标签管理工具
+# AWS Tag Tools: AWS 资源的统一标签管理器
 
 ![PyPI - Version](https://img.shields.io/pypi/v/aws-tag-tools?color=a1b858&style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aws-tag-Tools?&style=for-the-badge)
@@ -14,8 +14,8 @@
 
 ## 关于
 
-AWS Tag Tools 是一个功能强大且通用的工具,旨在管理各种 AWS
-服务中的资源标签。使用此工具,您可以轻松地在单个命令中为多个区域中的多个资源设置或取消设置标签,或者使用该工具根据标签键/值或其他规范 (
+AWS Tag Tools (AWSTT) 是一个功能强大且通用的工具，旨在管理各种 AWS
+服务中的资源标签。使用此工具，您可以轻松地在单个命令中为多个区域中的多个资源设置或取消设置标签，或者使用该工具根据标签键/值或其他规范 (
 如 EC2 实例类型) 跨多个区域批量列出匹配的资源。
 
 ## 特性
