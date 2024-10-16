@@ -26,7 +26,7 @@ such as EC2 instance type.
 - Support multiple AWS services, see the [supported services](docs/en_US/Supported-Services.md) for a detailed list.
 - Support AWS partitions: 'aws', 'aws-gov', and 'aws-cn'.
 - Filter or select resources using [JMESPath](https://jmespath.org/) expression,
-  see [Use Condition](docs/en_US/Use-Selector.md).
+  see [Use Selector](docs/en_US/Use-Selector.md).
 - Support Python expression for keys or values, see [Use Expression](docs/en_US/Use-Expression.md).
 - Ignore tags when the key exists or logs the original value when force overwrite.
 - Log the original key/value when unset tags.
