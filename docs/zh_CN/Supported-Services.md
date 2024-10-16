@@ -2,7 +2,7 @@
 
 AWS Tag Tools 现在支持以下 AWS 服务，您可以使用类别名称或 ARN 模式执行操作。
 
-在 ARN 模式中,可以使用 '\*' 来通配匹配 \<region\>、\<account-id\> 和 \<resource\>。例如:<br/>
+在 ARN 模式中，可以使用 '\*' 来通配匹配 \<region\>、\<account-id\> 和 \<resource\>。例如:<br/>
 'arn:aws:ec2:\*:\*:instance/*' 将匹配任何可用区域和账户中的所有 AWS EC2 实例。
 
 > [!NOTE]
