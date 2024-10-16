@@ -19,7 +19,7 @@ class SubnetScanner(Scanner):
         paginator = client.get_paginator("describe_subnets").paginate()
 
         for page in paginator:
-            for subnet in page.get("Snapshots", []):
+            for subnet in page.get("Subnets", []):
                 resources.append(self._build_resource(client, subnet))
 
         return resources
