@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "aws-tag-tools"
 version = "1.0.0"
-description = "A bulk management tool for the tags of AWS resources"
+description = "The unified tag manager for AWS resources"
 authors = ["AnyIons <anyions@hotmail.com>"]
 maintainers = ["AnyIons <anyions@hotmail.com>"]
 license = "MIT"
@@ -9,7 +9,7 @@ readme = "README.md"
 repository = "https://github.com/anyions/aws-tag-tools"
 homepage = "https://github.com/anyions/aws-tag-tools"
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
@@ -27,11 +27,8 @@ packages = [{ include = "awstt" }]
 [tool.poetry.dependencies]
 python = "^3.11"
 boto3 = "^1.34.104"
-rich = { version = "^13.9.2", optional = true }
-rich-click = { version = "^1.8.3", optional = true }
-
-[tool.poetry.extras]
-cli = ["rich", "rich-click"]
+rich = "^13.9.2"
+rich-click = "^1.8.3"
 
 [tool.poetry.scripts]
 awstt = 'awstt.cli:run'
@@ -70,7 +67,7 @@ tag_format = "$version"
 version_scheme = "pep440"
 version_provider = "poetry"
 update_changelog_on_bump = true
-major_version_zero = true
+major_version_zero = false
 
 [build-system]
 requires = ["poetry-core"]
