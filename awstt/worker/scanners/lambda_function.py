@@ -21,7 +21,7 @@ class LambdaFunctionScanner(Scanner):
         paginator = client.get_paginator("list_functions").paginate()
 
         for page in paginator:
-            for func in page.get("FunctionArn", []):
+            for func in page.get("Functions", []):
                 resources.append(self.build_resource(client, func))
 
         return resources
