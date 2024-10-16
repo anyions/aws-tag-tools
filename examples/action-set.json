@@ -15,9 +15,6 @@
       "value": "${now().strftime('%Y-%m-%d %H:%M:%S')}$"
     }
   ],
-  "cost-allocation-tags": [
-    "tagged_by"
-  ],
   "resources": [
     "ec2:ebs",
     "arn:aws:rds:*:*:db:mysql-instance",
