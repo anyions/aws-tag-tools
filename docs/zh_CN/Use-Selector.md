@@ -23,7 +23,8 @@ AWS Tag Tools 支持使用 [JMESPath](https://www.jmespath.org) 表达式作为�
 - 当结果为 `List[Dict]` 时，使用列表中每个字典中键为 `'key'` 的非空元素值为标签键
 - 当结果为 `Dict` 时，使用字典键为 `'key'` 的非空值为标签键
 
-当作为资源选择器使用时，可以使用 `tags`, `spec` 作为过滤条件，`spec` 字典每个服务均不相同，具体参考 [规格说明](SPEC.md)。
+当作为资源选择器使用时，可以使用 `tags`, `spec` 作为过滤条件，`spec`
+字典每个服务均不相同，具体参考 [规格说明](SPEC.md)。
 
 资源选择器返回结果可能为 `None`, `List`, `str` 或 `bool`，仅当 `List` 或 `str` 非空或 `bool` 值为 `True` 时才被选中。
 

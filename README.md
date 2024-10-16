@@ -7,7 +7,7 @@
 ![PyPI - License](https://img.shields.io/pypi/l/aws-tag-tools?color=&style=for-the-badge)
 ![Static Badge](https://img.shields.io/badge/author-AnyIons-violet?&style=for-the-badge)
 
-<img src="./docs/screenshots/app.png" alt="awstt" />
+<img src="docs/app.png" alt="awstt" />
 
 English | [简体中文](README_zh_CN.md)
 </div>
@@ -23,11 +23,11 @@ such as EC2 instance type.
 ## Features
 
 - Support usage in CLI or as an AWS Lambda Function.
-- Support multiple AWS services, see the [supported services](docs/Supported-Services.md) for a detailed list.
+- Support multiple AWS services, see the [supported services](docs/en_US/Supported-Services.md) for a detailed list.
 - Support AWS partitions: 'aws', 'aws-gov', and 'aws-cn'.
 - Filter or select resources using [JMESPath](https://jmespath.org/) expression,
-  see [Use Condition](docs/Use-Selector.md).
-- Support Python expression for keys or values, see [Use Expression](docs/Use-Expression.md).
+  see [Use Condition](docs/en_US/Use-Selector.md).
+- Support Python expression for keys or values, see [Use Expression](docs/en_US/Use-Expression.md).
 - Ignore tags when the key exists or logs the original value when force overwrite.
 - Log the original key/value when unset tags.
 - Log information to file with optional.
