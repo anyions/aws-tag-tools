@@ -28,8 +28,8 @@ such as EC2 instance type.
 - Filter or select resources using [JMESPath](https://jmespath.org/) expression,
   see [Use Selector](docs/en_US/Use-Selector.md).
 - Support Python expression for keys or values, see [Use Expression](docs/en_US/Use-Expression.md).
-- Ignore tags when the key exists or logs the original value when force overwrite.
-- Log the original key/value when unset tags.
+- Can ignore tags when the key exists or auto log the original value when force overwrite.
+- Auto log the original key/value when unset tags.
 - Log information to file with optional.
 
 ## Usage
