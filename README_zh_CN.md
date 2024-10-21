@@ -1,6 +1,8 @@
 <div align="center">
 
-# AWS Tag Tools: AWS 资源的统一标签管理器
+# AWS Tag Tools
+
+AWS 资源的统一标签管理器
 
 ![PyPI - Version](https://img.shields.io/pypi/v/aws-tag-tools?color=a1b858&style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aws-tag-Tools?&style=for-the-badge)
