@@ -73,7 +73,8 @@ awstt exec --config action.json --access_key YOUR_AWS_ACCESS_KEY_ID --access_key
 
 ### 复杂用法
 
-您可以使用 JSON 配置文件进行复杂操作，例如强制为所有资源添加 `owner=AnyIons` 标签，但不允许覆盖 EC2 实例上已存在的 `owner`
+您可以使用 [JSON 配置文件](docs/zh_CN/JSON-Config.md)进行复杂操作，例如强制为所有资源添加 `owner=AnyIons` 标签，但不允许覆盖
+EC2 实例上已存在的 `owner`
 标签，与此同时仅为 RDS 资源添加 `env=dev` 标签。
 
 请参阅 [action-set-example](examples/action-set.json) 和 [action-unset-example](examples/action-unset.json)。

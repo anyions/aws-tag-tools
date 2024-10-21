@@ -77,7 +77,8 @@ awstt exec --config action.json --access_key YOUR_AWS_ACCESS_KEY_ID --access_key
 
 ### Advanced Usage
 
-You can use a JSON configuration file for complex operations, such as adding the tag `owner=AnyIons` to all
+You can use a [JSON configuration file](docs/en_US/JSON-Config.md) for complex operations, such as adding the
+tag `owner=AnyIons` to all
 resources, but not allowing overwriting existing `owner` tags on EC2 instances, while also adding the tag `env=dev` only
 for RDS resources.
 
