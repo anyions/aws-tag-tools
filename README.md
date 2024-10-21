@@ -42,7 +42,7 @@ or list resources in bulk matching specific tag keys/values and resource attribu
 ### Prerequisites
 
 - Python 3.11 or higher is required.
-- If not explicitly specifying credentials (e.g., AK/SK or profile), AWS CLI credentials must be configured.
+- If not explicitly specifying credentials (e.g., AK/SK or profile name), the AWS CLI credential must be configured.
 - IAM role with permissions for the specified AWS services. For example, to add tags to Amazon EC2 instances, you
   must have the following permissions:
     - ec2:DescribeInstances

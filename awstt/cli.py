@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Optional
 
 import rich_click as click
@@ -7,6 +8,7 @@ import rich_click as click
 from awstt import executor
 from awstt.config import init_config
 from awstt.output import init_logger
+
 
 logger = logging.getLogger()
 
@@ -105,9 +107,9 @@ def info_resources():
 _cli_option_partition_choices = click.Choice(["aws", "aws-cn", "aws-us-gov"])
 
 _cli_common_options = [
-    click.option("--access_key", help="Access key of AWS AK/SK"),
-    click.option("--secret_key", help="Secret key of AWS AK/SK"),
-    click.option("--profile", help="Profile name of AWS CLI Credential"),
+    click.option("--access_key", help="Access key of AWS AK/SK", default=os.environ.get("AWS_ACCESS_KEY_ID")),
+    click.option("--secret_key", help="Secret key of AWS AK/SK", default=os.environ.get("AWS_SECRET_ACCESS_KEY")),
+    click.option("--profile", help="Profile name of AWS CLI Credential", default=os.environ.get("AWS_PROFILE")),
     click.option("--save-log", "save_log", is_flag=True, default=False, help="Save log to file"),
     click.option(
         "--log-level",
@@ -141,17 +143,17 @@ def cmd():
 @click.option("--filter", "filters", help="JMESPath expression to filter resources")
 @click.option("--force", is_flag=True, default=False, help="Force overwrite if tag exists")
 def cmd_set(
-        tag: str,
-        resource: Optional[str],
-        region: Optional[str],
-        partition: Optional[str],
-        filters: Optional[str],
-        force: Optional[bool],
-        access_key: Optional[str],
-        secret_key: Optional[str],
-        profile: Optional[str],
-        save_log: Optional[bool],
-        log_level: Optional[str],
+    tag: str,
+    resource: Optional[str],
+    region: Optional[str],
+    partition: Optional[str],
+    filters: Optional[str],
+    force: Optional[bool],
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
     if len(tag) < 1:
         click.echo("Error: must set at least one tag, see the usage of SET command.")
@@ -197,16 +199,16 @@ def cmd_set(
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
 @click.option("--filter", "filters", help="JMESPath expression to filter resources")
 def cmd_unset(
-        tag: str,
-        resource: Optional[str],
-        region: Optional[str],
-        partition: Optional[str],
-        filters: Optional[str],
-        access_key: Optional[str],
-        secret_key: Optional[str],
-        profile: Optional[str],
-        save_log: Optional[bool],
-        log_level: Optional[str],
+    tag: str,
+    resource: Optional[str],
+    region: Optional[str],
+    partition: Optional[str],
+    filters: Optional[str],
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
     if len(tag) < 1:
         click.echo("Error: must set at least one tag, see the usage of UNSET command.")
@@ -240,15 +242,15 @@ def cmd_unset(
 @click.option("--resource", help="Resource type or ARN pattern", metavar="RESOURCE1[,RESOURCE2,...]")
 @click.option("--filter", "filters", help="JMESPath expression to filter resources")
 def cmd_list(
-        resource: Optional[str],
-        region: Optional[str],
-        partition: Optional[str],
-        filters: Optional[str],
-        access_key: Optional[str],
-        secret_key: Optional[str],
-        profile: Optional[str],
-        save_log: Optional[bool],
-        log_level: Optional[str],
+    resource: Optional[str],
+    region: Optional[str],
+    partition: Optional[str],
+    filters: Optional[str],
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
     init_logger(log_level, save_log)
 
@@ -275,12 +277,12 @@ def cmd_list(
 @cmd_common_options
 @click.option("--config", "cfg", help="Config file", type=click.Path(exists=True))
 def cmd_exec(
-        cfg: str,
-        access_key: Optional[str],
-        secret_key: Optional[str],
-        profile: Optional[str],
-        save_log: Optional[bool],
-        log_level: Optional[str],
+    cfg: str,
+    access_key: Optional[str],
+    secret_key: Optional[str],
+    profile: Optional[str],
+    save_log: Optional[bool],
+    log_level: Optional[str],
 ):
     init_logger(log_level, save_log)
 

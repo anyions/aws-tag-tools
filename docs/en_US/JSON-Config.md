@@ -12,7 +12,12 @@ AWS Tag Tools can perform complex operations using a JSON configuration file wit
   "tags": [ <tag_dict> | "<string>" ],
   "filters": [ "<string>" ],
   "resources": [ "<string>" | <resource_dict> ],
-  "force": false | true
+  "force": false | true,
+  "credential": {
+    "access_key": "<string>",
+    "secret_key": "<string>",
+    "profile": "<string>"
+  }
 }
 ```
 
@@ -44,3 +49,16 @@ Parameter descriptions:
         * force (bool) - Whether to overwrite existing tags with the same key name, defaults to not overwrite. When
           performing "set" and "unset" operations, the resource's property value takes precedence
 - force (bool) - Whether to overwrite existing tags with the same key name, defaults to not overwrite
+- credential (dict) <br/> AWS credential information
+    * access_key (string) <br/> Access Key of AWS Credential
+    * secret_key <br/> Secret Key of AWS Credential
+    * profile <br/> Profile name of AWS Credential
+
+> [!Caution]
+> Using AK/SK (Access Key/Secret Key) in the configuration file may lead to privacy leaks or security risks. It is
+> strongly recommended to pass credential information through environment variables or command-line parameters.
+>
+> Supported credential environment variables are
+> * 'AWS_ACCESS_KEY_ID'
+> * 'AWS_SECRET_ACCESS_KEY'
+> * 'AWS_PROFILE'
