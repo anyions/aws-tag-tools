@@ -9,9 +9,8 @@ class ELBScanner(Scanner):
     def build_resource(self, client: any, lb: dict) -> AWSResource:
         arn = lb.get("LoadBalancerArn")
         resource_tags = []
-        for page in client.describe_tags(ResourceArns=[arn]):
-            for item in page.get("TagDescriptions", []):
-                resource_tags.extend(item.get("Tags", []))
+        for item in client.describe_tags(ResourceArns=[arn]).get("TagDescriptions", []):
+            resource_tags.extend(item.get("Tags", []))
 
         return AWSResource(
             self.category,
