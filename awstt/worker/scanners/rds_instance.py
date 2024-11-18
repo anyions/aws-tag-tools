@@ -6,12 +6,12 @@ from awstt.worker.types import AWSResource, AWSResourceTag
 
 @Scanner.register("RDS:Instance")
 class RDSInstanceScanner(Scanner):
-    def build_resource(self, client: any, cluster: dict) -> AWSResource:
+    def build_resource(self, client: any, instance: dict) -> AWSResource:
         return AWSResource(
             self.category,
-            self._build_arn(client, cluster["DBClusterArn"]),
-            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in cluster.get("TagList", [])],
-            cluster,
+            self._build_arn(client, instance["DBName"]),
+            [AWSResourceTag(tag["Key"], tag["Value"]) for tag in instance.get("TagList", [])],
+            instance,
         )
 
     def _list_resources(self, client: any) -> List[AWSResource]:
