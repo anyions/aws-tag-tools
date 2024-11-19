@@ -6,8 +6,6 @@ import datetime
 import logging
 import math
 
-import jmespath
-
 
 # add any needed builtins back in
 _safe_list = dict()
@@ -21,7 +19,7 @@ _safe_list["date"] = datetime.datetime.date
 _safe_list["time"] = datetime.datetime.time
 _safe_list["today"] = datetime.datetime.today
 _safe_list["timedelta"] = datetime.timedelta
-_safe_list["jmespath"] = jmespath
+# _safe_list["jmespath"] = jmespath
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +30,12 @@ def eval_expression(exp: str, env: any = None, spec: any = None) -> any:
     if exp.lower() in ["type", "class", "def"]:
         return exp
 
+    if any(sub in exp for sub in ["import", "__import__"]):
+        logger.fatal(f"Expression contains dangerous code - {exp}")
+
     # noinspection PyBroadException
     try:
-        return eval(exp, {"__builtins__": None}, data)
-    except Exception:
+        return eval(exp, data)
+    except Exception as e:
+        print(e)
         return exp
