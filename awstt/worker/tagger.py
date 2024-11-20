@@ -48,13 +48,13 @@ class Tagger(object):
         :param target: The resource to apply tags
         :type target: AWSResource
         :param tags: The tags to apply
-        :type tags: List[AWSResourceTag]
+        :type tags: List[Union[AWSResourceTag, str]]
         """
         logger.debug(
             f"Executing resource {'tagging' if self._action == 'set' else 'untagging'}: "
             f"region - {detect_region(region, self._partition)}, "
             f"resource - {target}, "
-            f"tags - {[t.dict() for t in tags]}"
+            f"tags - {[t.dict() for t in tags] if self._action == 'set' else tags}"
         )
 
         # noinspection SpellCheckingInspection
@@ -152,7 +152,7 @@ class Tagger(object):
                     elif self._action == "unset":
                         original_tag = [t for t in item.tags if t.key in target.tags]
                         if len(original_tag) > 0:
-                            hint = ", ".join([f"{t.key}: {t.value} --> <unset>" for t in original_tag])
+                            hint = ", ".join([f"{t.key}: {t.value} --> <deleted>" for t in original_tag])
 
                     item_resp = TaggingResponse(
                         category=item.category,

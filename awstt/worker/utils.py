@@ -6,7 +6,9 @@ from typing import List, Tuple
 import jmespath
 from dateutil import parser
 
-from awstt.worker.types import ArnInfo, AWSResource, ResourceFilter
+from awstt.config import Resource
+from awstt.evals import eval_expression
+from awstt.worker.types import ArnInfo, AWSResource
 
 
 class DateTimeEncoder(JSONEncoder):
@@ -74,34 +76,27 @@ def parse_arn(inputs: str) -> ArnInfo:
     )
 
 
-def filter_resources(resources: List[AWSResource], filters: List[ResourceFilter]) -> List[AWSResource]:
-    if len(filters) == 0:
-        return resources
-
+def filter_resources(resources: List[AWSResource], expect: Resource, env: any) -> List[AWSResource]:
     matched_list = []
     for res in resources:
-        matched = False
-        for f in filters:
-            if is_arn(f.pattern) and not is_arn_wild_match(f.pattern, res.arn):
-                continue
+        if is_arn(expect.target) and not is_arn_wild_match(expect.target, res.arn):
+            continue
 
-            if not is_arn(f.pattern) and f.pattern.lower() != res.category.lower():
-                continue
+        if not is_arn(expect.target) and expect.target.lower() != res.category.lower():
+            continue
 
-            if len(f.conditions) == 0:
+        if expect.filter is None or len(expect.filter) == 0:
+            matched = True
+        else:
+            met = jmespath.search(eval_expression(expect.filter, env, res.spec), res.dict())
+            if isinstance(met, bool) and met:
                 matched = True
-                break
-
-            for cond in f.conditions:
-                met = jmespath.search(cond, res.dict())
-                if isinstance(met, bool) and met:
-                    matched = True
-                elif isinstance(met, list) and len(met) > 0:
-                    matched = True
-                elif met:
-                    matched = True
-                else:
-                    matched = False
+            elif isinstance(met, list) and len(met) > 0:
+                matched = True
+            elif met:
+                matched = True
+            else:
+                matched = False
 
         if matched:
             if not any(res.arn == m.arn for m in matched_list):
@@ -110,7 +105,7 @@ def filter_resources(resources: List[AWSResource], filters: List[ResourceFilter]
     return matched_list
 
 
-def filter_tags(resources: List[AWSResource], filters: List[str]) -> List[Tuple[AWSResource, List[str]]]:
+def filter_tags(resources: List[AWSResource], filters: List[str], env: any) -> List[Tuple[AWSResource, List[str]]]:
     if len(filters) == 0:
         return []
 
@@ -127,7 +122,7 @@ def filter_tags(resources: List[AWSResource], filters: List[str]) -> List[Tuple[
             if not f.lower().startswith("tags["):
                 f = f"tags[?key=='{f}']"
 
-            ts = jmespath.search(f, resource.dict())
+            ts = jmespath.search(eval_expression(f, env, resource.spec), resource.dict())
 
             if ts is None:
                 continue

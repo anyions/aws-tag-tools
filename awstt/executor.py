@@ -1,29 +1,43 @@
+#  Copyright (c) 2024 AnyIons, All rights reserved.
+#  This file is part of aws-tag-tools, released under the MIT license.
+#  See the LICENSE file in the project root for full license details.
+
 import logging
 from typing import Dict, List, Tuple
 
 from awstt import output
-from awstt.config import Config, ConfigError, Tag, check_config
+from awstt.config import Config, ConfigError, Resource, Tag, check_config
+from awstt.evals import eval_expression
 from awstt.worker.thread import Scanner, ScanningThread, Tagger, TaggingThread
-from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, ResourceFilter, TaggingResponse
-from awstt.worker.utils import filter_tags, is_arn, is_arn_wild_match, parse_arn
+from awstt.worker.types import AWSResource, AWSResourceTag, RegionalTaggingTarget, TaggingResponse
+from awstt.worker.utils import filter_tags, is_arn, parse_arn
 
 
 logger = logging.getLogger(__name__)
 
 
-def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
+def _concat_filter(g_filter: str, r_filter: str) -> str:
+    return f"{g_filter} && {r_filter}" if all((g_filter, r_filter)) else g_filter or r_filter
+
+
+def _concat_tags(g_tags: List[Tag], r_tags: List[Tag]) -> List[Tag]:
+    if any(isinstance(t, Tag) for t in g_tags + r_tags):
+        tags = {t.key: t.value for t in g_tags} | {t.key: t.value for t in r_tags}
+        return [Tag(key=k, value=v) for k, v in tags.items()]
+    else:
+        return g_tags + r_tags
+
+
+def _run_list_cmd(config: Config, console: output.Console) -> List[Tuple[Resource, List[AWSResource]]]:
     for name in Scanner.list_available():
         scanner = Scanner.by_name(name)(config.partition, config.regions, config.credential)
 
         if len(config.resources) == 0:
             ScanningThread.add(
                 scanner,
-                ([ResourceFilter(pattern=scanner.arn_pattern, conditions=[config.filter])] if config.filter else []),
+                Resource(target=name, filter=config.filter, tags=config.tags, force=config.force),
             )
         else:
-            filters = []
-            need_to_scan = False
-
             for res in config.resources:
                 if isinstance(res, str):
                     target = res
@@ -31,139 +45,100 @@ def _run_list_cmd(config: Config, console: output.Console) -> List[AWSResource]:
                     target = res.target
 
                 if (is_arn(target) and scanner.is_supported_arn(target)) or (name.lower() == target.lower()):
-                    need_to_scan = True
-
                     if not isinstance(res, str):
-                        conditions = [s for s in [config.filter, res.filter] if s is not None]
-
-                        filters.append(
-                            ResourceFilter(
-                                pattern=target if is_arn(target) else scanner.arn_pattern,
-                                conditions=conditions,
-                            )
+                        ScanningThread.add(
+                            scanner,
+                            Resource(
+                                target=target,
+                                filter=_concat_filter(config.filter, res.filter),
+                                tags=_concat_tags(config.tags, res.tags),
+                                force=config.force if res.force is None else res.force,
+                            ),
                         )
                     else:
-                        filters.append(
-                            ResourceFilter(
-                                pattern=target,
-                                conditions=[config.filter] if config.filter else [],
-                            )
+                        ScanningThread.add(
+                            scanner,
+                            Resource(
+                                target=target,
+                                filter=config.filter,
+                                tags=config.tags,
+                                force=config.force,
+                            ),
                         )
 
-            if need_to_scan:
-                ScanningThread.add(scanner, filters)
-
-    return ScanningThread.execute(console)
+    return ScanningThread.execute(console, config.env)
 
 
-def _group_tag_resources(resources: List[AWSResource], tags: List[Tag], force: bool) -> List[RegionalTaggingTarget]:
+def _group_tagging_resources(
+    env: dict, resources: List[AWSResource], tags: List[Tag], force: bool
+) -> List[RegionalTaggingTarget]:
     class TaggingGroup:
-        # noinspection SpellCheckingInspection
         def __init__(self, rs: List[AWSResource], ts: List[Tag]):
             self.resources = rs
             self.tags = ts
 
-    # group resources by region
+    # group resources by region first then by eval tags
 
-    regional_resources: Dict[str, List[AWSResource]] = {}
+    groups: Dict[str, Dict[str, TaggingGroup]] = {}
+
     for resource in resources:
         region = parse_arn(resource.arn).region
-        if region not in regional_resources:
-            regional_resources[region] = []
+        if region not in groups:
+            groups[region] = {}
 
-        regional_resources[region].append(resource)
+        region_group = groups[region]
 
-    if force:
-        return [
-            RegionalTaggingTarget(region, resources, [AWSResourceTag(key=t.key, value=t.value) for t in tags])
-            for region, resources in regional_resources.items()
-        ]
+        real_tags = []
+        for tag in tags:
+            tag_key = eval_expression(tag.key, env, resource.spec)
+            tag_val = eval_expression(tag.value, env, resource.spec)
+            if force:
+                real_tags.append(Tag(key=tag_key, value=tag_val))
+            elif not any(t.key == tag_key for t in resource.tags):
+                real_tags.append(tag)
 
-    # group resources by tags
+        if len(real_tags) == 0:
+            continue
 
-    resp = []
-    for region, resources in regional_resources.items():
-        resources_with_tags: Dict[str, TaggingGroup] = {}
+        group_key = " | ".join(map(lambda t: "<~~%s=%s~~>" % (t.key, t.value), real_tags))
+        if group_key not in region_group:
+            region_group[group_key] = TaggingGroup([], real_tags)
 
-        for resource in resources:
-            filtered_tags: List[Tag] = []
-            for tag in tags:
-                if not any(t.key == tag.key for t in resource.tags):
-                    filtered_tags.append(tag)
+        region_group[group_key].resources.append(resource)
 
-            if len(filtered_tags) == 0:
+    targets = []
+    for region, region_group in groups.items():
+        for group in region_group.values():
+            if len(group.tags) == 0:
                 continue
 
-            key = " | ".join(map(lambda t: "%s=%s" % (t.key, t.value), filtered_tags))
-            if key not in resources_with_tags:
-                resources_with_tags[key] = TaggingGroup([], filtered_tags)
-            resources_with_tags[key].resources.append(resource)
-
-        resp.extend(
-            [
+            targets.append(
                 RegionalTaggingTarget(
                     region, group.resources, [AWSResourceTag(key=t.key, value=t.value) for t in group.tags]
                 )
-                for _, group in resources_with_tags.items()
-            ]
-        )
+            )
 
-    return resp
+    return targets
 
 
-def _run_set_cmd(config: Config, resources: List[AWSResource], console: output.Console) -> List[TaggingResponse]:
+def _run_set_cmd(
+    config: Config, inputs: List[Tuple[Resource, List[AWSResource]]], console: output.Console
+) -> List[TaggingResponse]:
     tagger = Tagger(config.partition, config.credential)
 
-    if len(config.resources) == 0:
-        g_resources = _group_tag_resources(resources, config.tags, config.force)
+    for expect, resources in inputs:
+        if len(resources) == 0:
+            continue
 
+        g_resources = _group_tagging_resources(config.env, resources, expect.tags, expect.force)
         TaggingThread.add(g_resources)
-    else:
-        g_tags = config.tags
-        for c_resource in config.resources:
-            if isinstance(c_resource, str):
-                targets: List[AWSResource] = []
-
-                for resource in resources:
-                    if resource.category.lower() == c_resource.lower() and not is_arn(c_resource):
-                        targets.append(resource)
-                    elif is_arn(c_resource) and is_arn_wild_match(resource.arn, c_resource):
-                        targets.append(resource)
-
-                if len(targets) > 0:
-                    g_resources = _group_tag_resources(targets, g_tags, config.force)
-                    if len(g_resources) > 0:
-                        TaggingThread.add(g_resources)
-            else:
-                force = c_resource.force or config.force
-                tags: List[Tag] = []
-
-                for tag in g_tags:
-                    c_tag = next(filter(lambda x: x.key == tag.key, c_resource.tags), None)
-                    if c_tag:
-                        tags.append(Tag(key=c_tag.key, value=c_tag.value))
-                    else:
-                        tags.append(Tag(key=tag.key, value=tag.value))
-
-                targets: List[AWSResource] = []
-
-                for resource in resources:
-                    if is_arn(c_resource.target) and is_arn_wild_match(resource.arn, c_resource.target):
-                        targets.append(resource)
-                    elif resource.category.lower() == c_resource.target.lower() and not is_arn(c_resource.target):
-                        targets.append(resource)
-
-                if len(targets) > 0:
-                    g_resources = _group_tag_resources(targets, tags, force)
-                    if len(g_resources) > 0:
-                        TaggingThread.add(g_resources)
 
     return TaggingThread.execute(tagger, console)
 
 
-def _group_untag_resources(
-    resources_with_filtered_tags: List[Tuple[AWSResource, List[str]]]
-) -> List[RegionalTaggingTarget]:
+def _group_untagging_resources(env: dict, resources: List[AWSResource], tags: List[str]) -> List[RegionalTaggingTarget]:
+    resources_with_filtered_tags = filter_tags(resources, tags, env)
+
     regional_resources: Dict[str, Dict] = {}
 
     for item in resources_with_filtered_tags:
@@ -187,53 +162,16 @@ def _group_untag_resources(
     return resp
 
 
-def _run_unset_cmd(config: Config, resources: List[AWSResource], console: output.Console) -> List[TaggingResponse]:
+def _run_unset_cmd(
+    config: Config, inputs: List[Tuple[Resource, List[AWSResource]]], console: output.Console
+) -> List[TaggingResponse]:
     tagger = Tagger(config.partition, config.credential, action="unset")
+    for expect, resources in inputs:
+        if len(resources) == 0:
+            continue
 
-    if len(config.resources) == 0:
-        resources_with_filtered_tags = filter_tags(resources, config.tags)
-        if len(resources_with_filtered_tags) == 0:
-            return []
-
-        g_resources = _group_untag_resources(resources_with_filtered_tags)
-
+        g_resources = _group_untagging_resources(config.env, resources, expect.tags)
         TaggingThread.add(g_resources)
-    else:
-        g_tags = config.tags
-
-        for c_resource in config.resources:
-            if isinstance(c_resource, str):
-                targets = []
-
-                for resource in resources:
-                    if resource.category == c_resource and not is_arn(c_resource):
-                        targets.append(resource)
-                    elif is_arn(c_resource) and is_arn_wild_match(resource.arn, c_resource):
-                        targets.append(resource)
-
-                if len(targets) > 0:
-                    resources_with_filtered_tags = filter_tags(resources, g_tags)
-
-                    if len(resources_with_filtered_tags) > 0:
-                        g_resources = _group_untag_resources(resources_with_filtered_tags)
-                        TaggingThread.add(g_resources)
-            else:
-                targets = []
-
-                for resource in resources:
-                    if is_arn(c_resource.target) and is_arn_wild_match(resource.arn, c_resource.target):
-                        targets.append(resource)
-                    elif resource.category == c_resource.target and not is_arn(c_resource.target):
-                        targets.append(resource)
-
-                if len(targets) > 0:
-                    tags = g_tags + c_resource.tags
-
-                    resources_with_filtered_tags = filter_tags(resources, tags)
-
-                    if len(resources_with_filtered_tags) > 0:
-                        g_resources = _group_untag_resources(resources_with_filtered_tags)
-                        TaggingThread.add(g_resources)
 
     return TaggingThread.execute(tagger, console)
 
@@ -263,7 +201,7 @@ def run(config: Config):
     except ConfigError as e:
         logger.fatal(f"Bad config: {e}")
 
-    resource = _run_list_cmd(config, console)
+    resources_list_response = _run_list_cmd(config, console)
 
     if config.action.lower() == "list":
         categories = {}
@@ -271,19 +209,20 @@ def run(config: Config):
         logger.info(f"Tags list executed summary:")
 
         table = console.new_table(title="Tags List Summary")
-        table.add_column("ARN", width=80)
-        table.add_column("Tags")
-        for res in resource:
-            if not categories.get(res.category):
-                categories[res.category] = True
-                logger.info(f"=== {res.category} ===")
+        table.add_column("ARN")
+        table.add_column("Tags", width=40)
+        for _, resources in resources_list_response:
+            for res in resources:
+                if not categories.get(res.category):
+                    categories[res.category] = True
+                    logger.info(f"=== {res.category} ===")
 
-                table.add_section()
-                table.add_row(res.category, "", end_section=True)
+                    table.add_section()
+                    table.add_row(res.category, "", end_section=True)
 
-            tags = " | ".join(["%s=%s" % (t.key, t.value) for t in res.tags]) if len(res.tags) > 0 else "<No Tags>"
-            table.add_row(res.arn, tags)
-            logger.info("%-80s\n%s" % (res.arn, tags))
+                tags = "\n".join(["%s = %s" % (t.key, t.value) for t in res.tags]) if len(res.tags) > 0 else "<No Tags>"
+                table.add_row(res.arn, tags)
+                logger.info("%-80s\n%s" % (res.arn, tags))
 
         console.print(table)
 
@@ -293,9 +232,9 @@ def run(config: Config):
         logger.info(f"Tags {config.action.lower()} executed summary:")
 
         if config.action.lower() == "set":
-            summaries = _run_set_cmd(config, resource, console)
+            summaries = _run_set_cmd(config, resources_list_response, console)
         else:
-            summaries = _run_unset_cmd(config, resource, console)
+            summaries = _run_unset_cmd(config, resources_list_response, console)
 
         table = console.new_table(title="Tags Set Summary")
         table.add_column("ARN", width=80)

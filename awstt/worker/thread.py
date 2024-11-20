@@ -1,15 +1,15 @@
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List
+from typing import List, Tuple
 
 from awstt import output
+from awstt.config import Resource
 from awstt.worker.scanner import Scanner
 from awstt.worker.tagger import Tagger
 from awstt.worker.types import (
     AWSResource,
     RegionalTaggingTarget,
-    ResourceFilter,
     TaggingResponse,
 )
 
@@ -24,27 +24,27 @@ class ScanningThread:
     _workers: List["ScanningThread.Worker"] = []
 
     class Worker:
-        def __init__(self, scanner: Scanner, filters: List[ResourceFilter]):
+        def __init__(self, scanner: Scanner, expect: Resource):
             self.scanner = scanner
-            self.filters = filters
+            self.expect = expect
 
-        def execute(self) -> List[AWSResource]:
+        def execute(self, env: any) -> Tuple[Resource, List[AWSResource]]:
             resources = []
             try:
-                resources = self.scanner.execute(filters=self.filters)
+                resources = self.scanner.execute(expect=self.expect, env=env)
             except KeyboardInterrupt:
                 logger.warning(f"Scanning process terminated - {self.scanner.category}")
             except Exception as e:
                 logger.error(f"Scanning process failed - {self.scanner.category}, error - {e}")
             finally:
-                return resources
+                return self.expect, resources
 
     @classmethod
-    def add(cls, scanner: Scanner, filters: list[ResourceFilter]):
-        cls._workers.append(ScanningThread.Worker(scanner, filters))
+    def add(cls, scanner: Scanner, resource: Resource):
+        cls._workers.append(ScanningThread.Worker(scanner, resource))
 
     @classmethod
-    def execute(cls, console: output.Console) -> List[AWSResource]:
+    def execute(cls, console: output.Console, env: any) -> List[Tuple[Resource, List[AWSResource]]]:
         logger.debug(f"Executing resources scan, total - {len(cls._workers)}")
 
         resources = []
@@ -53,10 +53,10 @@ class ScanningThread:
             task_id = progress.add_task("Scanning...".ljust(15), total=len(cls._workers))
             progress.start()
 
-            futures = [executor.submit(worker.execute) for worker in cls._workers]
+            futures = [executor.submit(worker.execute, env) for worker in cls._workers]
             for future in as_completed(futures):
                 progress.update(task_id, advance=1)
-                resources.extend(future.result())
+                resources.append(future.result())
 
         progress.stop()
         logger.debug(f"Finished resources scan, found - {len(resources)}")

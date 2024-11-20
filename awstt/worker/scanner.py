@@ -7,9 +7,9 @@ from typing import List
 
 import boto3
 
-from awstt.config import Credential
+from awstt.config import Credential, Resource
 from awstt.worker.registrable import Registrable
-from awstt.worker.types import AWSResource, ResourceFilter
+from awstt.worker.types import AWSResource
 from awstt.worker.utils import detect_region, filter_resources, is_arn, parse_arn
 
 
@@ -42,11 +42,12 @@ class Scanner(Registrable, ABC):
         info = parse_arn(arn)
         return info.service == self._service_name and info.resource_type == self._arn_resource_type
 
-    def execute(self, *, filters: list[ResourceFilter]) -> List[AWSResource]:
+    def execute(self, *, expect: Resource, env: any) -> List[AWSResource]:
         """
-        Scan resources with selectors
+        Scan resources with expect resource config
 
-        :param filters: The selectors to filter resources
+        :param expect: The target resource config
+        :param env: The environment variables
         :return: A list ARNs of resources matched selectors
         :rtype: List[AWSResource]
         """
@@ -67,7 +68,7 @@ class Scanner(Registrable, ABC):
                 logger.debug(f"Scanning - {self.category} @ {region}")
                 client = self._create_client(self._session, region=detect_region(region, self._partition))
                 founded = self._list_resources(client)
-                filtered = filter_resources(founded, filters)
+                filtered = filter_resources(founded, expect, env)
 
                 resources.extend(filtered)
                 logger.debug(
