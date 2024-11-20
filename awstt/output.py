@@ -1,3 +1,7 @@
+#  Copyright (c) 2024 AnyIons, All rights reserved.
+#  This file is part of aws-tag-tools, released under the MIT license.
+#  See the LICENSE file in the project root for full license details.
+
 import logging
 import os
 import sys
@@ -60,24 +64,24 @@ class FakeConsole:
         pass
 
     def print_json(
-            self,
-            json: Optional[str] = None,
-            *,
-            data: Any = None,
-            indent: Union[None, int, str] = 2,
-            highlight: bool = True,
-            skip_keys: bool = False,
-            ensure_ascii: bool = False,
-            check_circular: bool = True,
-            allow_nan: bool = True,
-            default: Optional[Callable[[Any], Any]] = None,
-            sort_keys: bool = False,
+        self,
+        json: Optional[str] = None,
+        *,
+        data: Any = None,
+        indent: Union[None, int, str] = 2,
+        highlight: bool = True,
+        skip_keys: bool = False,
+        ensure_ascii: bool = False,
+        check_circular: bool = True,
+        allow_nan: bool = True,
+        default: Optional[Callable[[Any], Any]] = None,
+        sort_keys: bool = False,
     ) -> None:
         pass
 
     def pprint(
-            self,
-            objects: Any,
+        self,
+        objects: Any,
     ) -> None:
         pass
 
@@ -111,7 +115,6 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
     from rich.progress import SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table as RichTable
 
-
     class Console(RichConsole):
         # noinspection PyMethodMayBeStatic
         def new_table(self, title: str, **kwargs):
@@ -137,8 +140,8 @@ if os.getenv("LAMBDA_TASK_ROOT") is None:
             return Pretty(*args, **kwargs)
 
         def pprint(
-                self,
-                objects: Any,
+            self,
+            objects: Any,
         ) -> None:
             pprint(objects, console=self)
 
