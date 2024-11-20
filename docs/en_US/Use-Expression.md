@@ -23,3 +23,7 @@ expression:
 
 Additionally, the built-in variable `env` can be used in the expression to access environment variables. Note that
 any environment variables starting with `'AWS_'` are excluded to prevent sensitive information leakage.
+
+Additionally, the built-in variable `env` can be used in the expression to access environment variables starts
+with `AWSTT_`. The built-in variable `spec` can be used to access resource-specific specification parameters.
+For details, please refer to [Spec Description](SPEC.md).

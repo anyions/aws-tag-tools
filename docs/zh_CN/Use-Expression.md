@@ -19,4 +19,5 @@ ${in-line-python-expression}$
 - `today()` (datetime.datetime.today 别名)
 - `timedelta()` (datetime.timedelta 别名)
 
-除此之外，在表达式中还可以使用内置变量 `env` 来访问环境变量，注意环境变量中不包括任何以 `'AWS_'` 开头的参数以防止敏感信息泄露。
+除此之外，在表达式中还可以使用内置变量 `env` 来访问环境变量中以 `AWSTT_`开头的参数，以及使用内置变量 `spec`
+来访问资源特定的规格参数，具体参考 [规格说明](SPEC.md)
