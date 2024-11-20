@@ -19,7 +19,6 @@ _safe_list["date"] = datetime.datetime.date
 _safe_list["time"] = datetime.datetime.time
 _safe_list["today"] = datetime.datetime.today
 _safe_list["timedelta"] = datetime.timedelta
-# _safe_list["jmespath"] = jmespath
 
 logger = logging.getLogger(__name__)
 
@@ -37,5 +36,4 @@ def eval_expression(exp: str, env: any = None, spec: any = None) -> any:
     try:
         return eval(exp, data)
     except Exception as e:
-        print(e)
         return exp
