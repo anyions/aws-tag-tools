@@ -3,22 +3,28 @@ import logging
 import os
 import re
 from dataclasses import asdict, dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
-from .evals import eval_expression
+from awstt.evals import eval_expression
 
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, init=True, repr=True, order=True)
-class Tag:
+class _Base:
+    def dict(self):
+        return asdict(self)
+
+
+@dataclass(frozen=True, init=True, repr=True, order=True)
+class Tag(_Base):
     key: str
     value: Optional[str] = ""
 
 
 @dataclass(frozen=True, init=True, repr=True, order=True)
-class Resource:
+class Resource(_Base):
     target: str
     tags: List[Union[Tag, str]] = field(default_factory=list)
     filter: Optional[str] = None
@@ -31,14 +37,14 @@ class Resource:
 
 
 @dataclass(frozen=True, init=True, repr=True, order=True)
-class Credential:
+class Credential(_Base):
     access_key: Optional[str] = None
     secret_key: Optional[str] = None
     profile: Optional[str] = None
 
 
 @dataclass(frozen=True, init=True, repr=True, order=True)
-class Config:
+class Config(_Base):
     action: str
     force: bool = False
     filter: Optional[str] = None
@@ -47,9 +53,7 @@ class Config:
     tags: List[Union[Tag, str]] = field(default_factory=list)
     resources: List[Union[str, Resource]] = field(default_factory=list)
     credential: Optional[Credential] = field(default_factory=Credential)
-
-    def dict(self) -> Dict[str, any]:
-        return asdict(self)
+    env: Optional[any] = field(default_factory=dict)
 
 
 class ConfigError(Exception):
@@ -66,7 +70,7 @@ def init_config(data: dict) -> Config:
     env.pop("AWS_PROFILE", None)
 
     data_str = json.dumps(data)
-    for exp in re.findall(r"\${(.+)}\$", data_str):
+    for exp in re.findall(r"\${(.+?)}\$", data_str):
         exp_value = eval_expression(exp, env)
         data_str = data_str.replace(f"${{{exp}}}$", str(exp_value))
 
@@ -81,6 +85,7 @@ def init_config(data: dict) -> Config:
         [Resource(**res) if isinstance(res, dict) else res for res in data["resources"]] if data["resources"] else []
     )
     data["tags"] = [Tag(**tag) if isinstance(tag, dict) else tag for tag in data["tags"]] if data["tags"] else []
+    data["env"] = {k: v for k, v in env.items() if k.lower().startswith("awstt_")} if env else {}
 
     return Config(**data)
 
