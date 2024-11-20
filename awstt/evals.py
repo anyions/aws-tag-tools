@@ -5,6 +5,7 @@
 import datetime
 import logging
 import math
+import re
 
 
 # add any needed builtins back in
@@ -26,14 +27,16 @@ logger = logging.getLogger(__name__)
 def eval_expression(exp: str, env: any = None, spec: any = None) -> any:
     data = {"env": env if env is not None else {}, "spec": spec if spec is not None else {}, **_safe_list}
 
-    if exp.lower() in ["type", "class", "def"]:
-        return exp
-
-    if any(sub in exp for sub in ["import", "__import__"]):
-        logger.fatal(f"Expression contains dangerous code - {exp}")
-
     # noinspection PyBroadException
     try:
-        return eval(exp, data)
+        raw_exp = re.search(r"^\${(.+?)}\$$", exp).group(1)
+
+        if raw_exp.lower() in ["type", "class", "def"]:
+            return raw_exp
+
+        if any(sub in raw_exp for sub in ["import", "__import__"]):
+            logger.fatal(f"Expression contains dangerous code - {exp}")
+
+        return eval(raw_exp, data)
     except Exception as e:
         return exp

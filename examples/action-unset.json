@@ -22,7 +22,8 @@
     {
       "target": "arn:aws:ec2:*:*:instance/*",
       "tags": [
-        "tags[?key=='owner' && value == 'AnyIons'].key"
+        "tags[?key=='owner' && value == 'AnyIons'].key",
+        "type"
       ],
       "filter": "tags[?key == 'tagged_at' && value < '${now().strftime('%Y-%m-%d %H:%M:%S')}$']"
     }

@@ -11,7 +11,6 @@ from typing import List, Optional, Union
 
 from awstt.evals import eval_expression
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -74,9 +73,7 @@ def init_config(data: dict) -> Config:
     env.pop("AWS_PROFILE", None)
 
     data_str = json.dumps(data)
-    for exp in re.findall(r"\${(.+?)}\$", data_str):
-        exp_value = eval_expression(exp, env)
-        data_str = data_str.replace(f"${{{exp}}}$", str(exp_value))
+    data_str = re.sub(r"\${\s*(.+?)\s*}\$", lambda x: eval_expression(x.group(0), env), data_str)
 
     data = json.loads(data_str)
 
@@ -96,12 +93,12 @@ def init_config(data: dict) -> Config:
 
 def check_config(config: Config):
     if config.credential.profile is not None and (
-        config.credential.access_key is not None or config.credential.secret_key is not None
+            config.credential.access_key is not None or config.credential.secret_key is not None
     ):
         raise ConfigError("Only one of credential.profile or credential.access_key/secret_key should be provided")
 
     if config.credential.profile is None and (
-        config.credential.access_key is None or config.credential.secret_key is None
+            config.credential.access_key is None or config.credential.secret_key is None
     ):
         raise ConfigError("Either credential.profile or both credential.access_key/secret_key should be provided")
 
