@@ -1,4 +1,24 @@
-## 1.0.0
+## 1.1.0 (2024-11-20)
+
+### Feat
+
+- *****: expression per resource
+- **evals**: disable module import
+- **evals**: safe eval
+- *****: lambda entrypoint
+- *****: credential from environ
+
+### Fix
+
+- **config**: expression eval
+- **scanner**: issue of scan rds instance
+- **scanner**: issue of get elb tags
+
+### Refactor
+
+- **eval**: remove debug
+
+## 1.0.0 (2024-10-16)
 
 ### BREAKING CHANGE
 
