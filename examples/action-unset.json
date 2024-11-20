@@ -6,23 +6,23 @@
     "ap-northeast-1"
   ],
   "tags": [
-    "owner",
+    "xxx",
+    "ooo",
     "tags[?value == 'awstt'].key"
   ],
   "resources": [
-    "ec2:instance",
+    "ec2:ebs",
     "arn:aws:rds:*:*:db:mysql-instance",
     {
       "target": "arn:aws:ec2:*:*:vpc/*",
       "tags": [
-        "tagged_at"
-      ],
-      "filter": "tags[?key == 'others']"
+        "tags[?key=='owner' && value == 'AnyIons'].key"
+      ]
     },
     {
-      "target": "arn:aws:ec2:*:*:volume/*",
+      "target": "arn:aws:ec2:*:*:instance/*",
       "tags": [
-        "tags[?key=='owner' && value == 'aws-tag-tools'].key"
+        "tags[?key=='owner' && value == 'AnyIons'].key"
       ],
       "filter": "tags[?key == 'tagged_at' && value < '${now().strftime('%Y-%m-%d %H:%M:%S')}$']"
     }

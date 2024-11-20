@@ -33,11 +33,15 @@
         {
           "key": "owner",
           "value": "AnyIons"
+        },
+        {
+          "key": "type",
+          "value": "${spec['InstanceType']}$"
         }
       ],
       "force": true,
       "filter": "!(tags[?key == 'others'])"
     }
   ],
-  "force": false
+  "force": true
 }
