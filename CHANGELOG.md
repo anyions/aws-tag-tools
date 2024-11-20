@@ -1,3 +1,9 @@
+## 1.1.1 (2024-11-20)
+
+### Fix
+
+- **evals**: handle non-expression
+
 ## 1.1.0 (2024-11-20)
 
 ### Feat
